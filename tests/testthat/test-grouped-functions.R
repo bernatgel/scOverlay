@@ -6,6 +6,16 @@ patchwork_child_plots <- function(p) {
   return(c(list(p), p$patches$plots))
 }
 
+grouped_foreground_layer_data <- function(p) {
+  layer_data <- lapply(p$layers, function(layer) layer$data)
+  foreground_layers <- Filter(
+    function(x) is.data.frame(x) && "foreground" %in% colnames(x),
+    layer_data
+  )
+  expect_true(length(foreground_layers) >= 1L)
+  return(foreground_layers[[length(foreground_layers)]])
+}
+
 expected_nested_panel_count <- function(sce, group_col, outer_col) {
   group_vals <- as.character(SummarizedExperiment::colData(sce)[[group_col]])
   outer_vals <- as.character(SummarizedExperiment::colData(sce)[[outer_col]])
@@ -207,6 +217,21 @@ test_that("plotOverlayPerGroup supports shared limits and legends", {
   lapply(patchwork_child_plots(g_fg), function(p) {
     expect_equal(p$scales$scales[[1]]$limits, fg_limits)
   })
+
+  SummarizedExperiment::colData(sce)$numeric_y <- rev(seq_len(ncol(sce)))
+  g_bivar <- plotOverlayPerGroup(
+    sce,
+    foreground = c("numeric_fg", "numeric_y"),
+    group_col = "sample_type",
+    background = "solid",
+    fg_type = "bivariate",
+    fg_limits = "shared",
+    fg_subset_cells = subset_idx
+  )
+  expect_s3_class(g_bivar, "patchwork")
+  bivar_layers <- lapply(patchwork_child_plots(g_bivar), grouped_foreground_layer_data)
+  bivar_layers <- Filter(function(x) nrow(x) > 0L, bivar_layers)
+  expect_true(all(vapply(bivar_layers, function(x) ".fg_colour" %in% colnames(x), logical(1))))
 
   g_bg <- plotOverlayPerGroup(
     sce,

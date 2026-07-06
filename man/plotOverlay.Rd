@@ -11,7 +11,7 @@ plotOverlay(
   reduced_dim = "TSNE",
   fg_subset_cells = NULL,
   bg_type = c("auto", "continuous", "categorical"),
-  fg_type = c("auto", "continuous", "categorical"),
+  fg_type = c("auto", "continuous", "categorical", "bivariate"),
   bg_assay = "logcounts",
   fg_assay = "logcounts",
   fg_order = c("input", "random", "ascending", "descending"),
@@ -41,12 +41,14 @@ dimension specified in \code{reduced_dim}. If \code{background} or
 \code{foreground} is a feature, the object must also contain the
 corresponding assay specified in \code{bg_assay} or \code{fg_assay}.}
 
-\item{foreground}{A single character value specifying the variable to draw in
-the foreground layer. It can be \code{"solid"} to draw selected foreground
-cells with a fixed colour, \code{"none"} to draw no visible foreground
-points, a feature in \code{rownames(sce)}, in which case values are taken
-from \code{fg_assay}, or a column in \code{colData(sce)}. This argument has
-no default and must be provided by the user.}
+\item{foreground}{A character value specifying the variable to draw in the
+foreground layer. It can be \code{"solid"} to draw selected foreground cells
+with a fixed colour, \code{"none"} to draw no visible foreground points, a
+feature in \code{rownames(sce)}, in which case values are taken from
+\code{fg_assay}, or a column in \code{colData(sce)}. When
+\code{fg_type = "bivariate"}, it must be a character vector of exactly two
+numeric features or \code{colData(sce)} columns. This argument has no default
+and must be provided by the user.}
 
 \item{background}{A single character value specifying the background layer.
 It can be \code{"solid"} to draw all background cells with a fixed colour,
@@ -75,10 +77,13 @@ they are numeric. Defaults to \code{"auto"}.}
 
 \item{fg_type}{A character value indicating how the foreground variable should
 be represented when \code{foreground} is not \code{"solid"} or \code{"none"}.
-Accepted values are \code{"auto"}, \code{"continuous"} and
-\code{"categorical"}. With \code{"auto"}, feature values are treated as
-continuous and \code{colData} variables are treated as continuous only when
-they are numeric. Defaults to \code{"auto"}.}
+Accepted values are \code{"auto"}, \code{"continuous"},
+\code{"categorical"} and \code{"bivariate"}. With \code{"auto"}, feature
+values are treated as continuous and \code{colData} variables are treated as
+continuous only when they are numeric. \code{"bivariate"} blends colours from
+two continuous foreground variables and requires \code{foreground} to contain
+exactly two numeric features or \code{colData(sce)} columns. Defaults to
+\code{"auto"}.}
 
 \item{bg_assay}{A single character value with the name of the assay to use
 when \code{background} is a feature in \code{rownames(sce)}. It is ignored
@@ -121,7 +126,8 @@ ignored when \code{foreground = "none"}. When \code{foreground = "solid"},
 solid foreground colour. For variable foregrounds, it can be \code{NULL}, a
 palette name, a vector of colours or a palette function, and the value is
 passed to \code{\link{getPalette}}. For continuous foregrounds, colour vectors
-are interpreted as gradient anchors and interpolated internally. Defaults to
+are interpreted as gradient anchors and interpolated internally. For
+bivariate foregrounds, \code{NULL} uses \code{"orange_blue"}. Defaults to
 \code{NULL}, which uses \code{"gray_red"} for continuous foregrounds and
 \code{"scOverlay"} for categorical foregrounds.}
 
@@ -141,9 +147,11 @@ it with white. Defaults to \code{0.9}.}
 
 \item{fg_limits}{Limits for the foreground colour scale when the foreground is
 continuous. It can be \code{NULL}, a strictly increasing numeric vector of
-length two, or \code{"shared"}. In a single plot, \code{"shared"} resolves to
-the range of foreground values drawn in that plot. It is ignored with a
-warning when the foreground layer is not continuous. Defaults to \code{NULL}.}
+length two, or \code{"shared"}. In bivariate mode, shared grouped plots use
+separate limits for the two foreground variables. In a single plot,
+\code{"shared"} resolves to the range of foreground values. It is ignored
+with a warning when the foreground layer is not continuous or bivariate.
+Defaults to \code{NULL}.}
 
 \item{bg_limits}{Limits for the background colour scale when the background is
 continuous. It can be \code{NULL}, a strictly increasing numeric vector of

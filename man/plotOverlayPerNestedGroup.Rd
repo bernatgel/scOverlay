@@ -17,7 +17,7 @@ plotOverlayPerNestedGroup(
   bg_type = c("auto", "continuous", "categorical"),
   bg_assay = "logcounts",
   fg_assay = "logcounts",
-  fg_type = c("auto", "continuous", "categorical"),
+  fg_type = c("auto", "continuous", "categorical", "bivariate"),
   fg_order = c("input", "random", "ascending", "descending"),
   bg_point_size = 2,
   fg_point_size = 0.5,
@@ -107,9 +107,12 @@ when \code{foreground = "solid"} or \code{foreground = "none"}. Defaults to
 \item{fg_type}{A character value indicating how the foreground variable should
 be represented when \code{foreground} is not \code{"solid"} or
 \code{"none"}. Accepted values are \code{"auto"}, \code{"continuous"} and
-\code{"categorical"}. With \code{"auto"}, feature values are treated as
-continuous and \code{colData} variables are treated as continuous only when
-they are numeric. Defaults to \code{"auto"}.}
+\code{"categorical"} and \code{"bivariate"}. With \code{"auto"}, feature
+values are treated as continuous and \code{colData} variables are treated as
+continuous only when they are numeric. \code{"bivariate"} blends colours from
+two continuous foreground variables and requires \code{foreground} to contain
+exactly two numeric features or \code{colData(sce)} columns. Defaults to
+\code{"auto"}.}
 
 \item{fg_order}{A character value controlling the drawing order of foreground
 cells within each panel. Accepted values are \code{"input"},

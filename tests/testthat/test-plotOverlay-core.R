@@ -1494,6 +1494,56 @@ test_that("fg_type categorical remains permissive", {
   )
 })
 
+test_that("fg_type bivariate uses two numeric foreground variables", {
+  sce <- make_na_foreground_sce()
+  SummarizedExperiment::colData(sce)$score_y <- c(0, 1, NA, 3, 4)
+
+  p <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("numeric_score", "score_y"),
+    fg_type = "bivariate"
+  )
+  foreground <- get_foreground_layer_data(p)
+  expect_s3_class(p, "ggplot")
+  expect_true(".fg_colour" %in% colnames(foreground))
+  expect_equal(nrow(foreground), 2L)
+  expect_true(all(grepl("^#[0-9A-Fa-f]{6}$", foreground$.fg_colour)))
+
+  expect_error(
+    plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = c("numeric_score", "score_y")
+    ),
+    "`foreground` must be a single non-NA character string"
+  )
+
+  expect_error(
+    plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = "numeric_score",
+      fg_type = "bivariate"
+    ),
+    "character vector of length 2"
+  )
+
+  expect_error(
+    plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = c("numeric_score", "categorical_state"),
+      fg_type = "bivariate"
+    ),
+    "requires both foreground variables to be numeric"
+  )
+})
+
 test_that("plotOverlay validates key inputs", {
   sce <- get_example_sce()
 

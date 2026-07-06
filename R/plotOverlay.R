@@ -44,12 +44,14 @@
 #' \code{foreground} is a feature, the object must also contain the
 #' corresponding assay specified in \code{bg_assay} or \code{fg_assay}.
 #'
-#' @param foreground A single character value specifying the variable to draw in
-#' the foreground layer. It can be \code{"solid"} to draw selected foreground
-#' cells with a fixed colour, \code{"none"} to draw no visible foreground
-#' points, a feature in \code{rownames(sce)}, in which case values are taken
-#' from \code{fg_assay}, or a column in \code{colData(sce)}. This argument has
-#' no default and must be provided by the user.
+#' @param foreground A character value specifying the variable to draw in the
+#' foreground layer. It can be \code{"solid"} to draw selected foreground cells
+#' with a fixed colour, \code{"none"} to draw no visible foreground points, a
+#' feature in \code{rownames(sce)}, in which case values are taken from
+#' \code{fg_assay}, or a column in \code{colData(sce)}. When
+#' \code{fg_type = "bivariate"}, it must be a character vector of exactly two
+#' numeric features or \code{colData(sce)} columns. This argument has no default
+#' and must be provided by the user.
 #'
 #' @param background A single character value specifying the background layer.
 #' It can be \code{"solid"} to draw all background cells with a fixed colour,
@@ -78,10 +80,13 @@
 #'
 #' @param fg_type A character value indicating how the foreground variable should
 #' be represented when \code{foreground} is not \code{"solid"} or \code{"none"}.
-#' Accepted values are \code{"auto"}, \code{"continuous"} and
-#' \code{"categorical"}. With \code{"auto"}, feature values are treated as
-#' continuous and \code{colData} variables are treated as continuous only when
-#' they are numeric. Defaults to \code{"auto"}.
+#' Accepted values are \code{"auto"}, \code{"continuous"},
+#' \code{"categorical"} and \code{"bivariate"}. With \code{"auto"}, feature
+#' values are treated as continuous and \code{colData} variables are treated as
+#' continuous only when they are numeric. \code{"bivariate"} blends colours from
+#' two continuous foreground variables and requires \code{foreground} to contain
+#' exactly two numeric features or \code{colData(sce)} columns. Defaults to
+#' \code{"auto"}.
 #'
 #' @param bg_assay A single character value with the name of the assay to use
 #' when \code{background} is a feature in \code{rownames(sce)}. It is ignored
@@ -124,7 +129,8 @@
 #' solid foreground colour. For variable foregrounds, it can be \code{NULL}, a
 #' palette name, a vector of colours or a palette function, and the value is
 #' passed to \code{\link{getPalette}}. For continuous foregrounds, colour vectors
-#' are interpreted as gradient anchors and interpolated internally. Defaults to
+#' are interpreted as gradient anchors and interpolated internally. For
+#' bivariate foregrounds, \code{NULL} uses \code{"orange_blue"}. Defaults to
 #' \code{NULL}, which uses \code{"gray_red"} for continuous foregrounds and
 #' \code{"scOverlay"} for categorical foregrounds.
 #'
@@ -144,9 +150,11 @@
 #'
 #' @param fg_limits Limits for the foreground colour scale when the foreground is
 #' continuous. It can be \code{NULL}, a strictly increasing numeric vector of
-#' length two, or \code{"shared"}. In a single plot, \code{"shared"} resolves to
-#' the range of foreground values drawn in that plot. It is ignored with a
-#' warning when the foreground layer is not continuous. Defaults to \code{NULL}.
+#' length two, or \code{"shared"}. In bivariate mode, shared grouped plots use
+#' separate limits for the two foreground variables. In a single plot,
+#' \code{"shared"} resolves to the range of foreground values. It is ignored
+#' with a warning when the foreground layer is not continuous or bivariate.
+#' Defaults to \code{NULL}.
 #'
 #' @param bg_limits Limits for the background colour scale when the background is
 #' continuous. It can be \code{NULL}, a strictly increasing numeric vector of
@@ -241,7 +249,7 @@ plotOverlay <- function(
 		reduced_dim = "TSNE",          
 		fg_subset_cells = NULL,        
 		bg_type = c("auto","continuous","categorical"),
-		fg_type = c("auto","continuous","categorical"),
+		fg_type = c("auto","continuous","categorical","bivariate"),
 		bg_assay = "logcounts",        
 		fg_assay = "logcounts",        
 		fg_order = c("input", "random", "ascending", "descending"),
@@ -277,7 +285,6 @@ plotOverlay <- function(
 	}
 	.validate_raster_args(bg_raster, fg_raster, raster_dpi)
 	.validate_string_arg(background, "background")
-	.validate_string_arg(foreground, "foreground")
 	.validate_layer_limits(bg_limits, "bg_limits")
 	.validate_layer_limits(fg_limits, "fg_limits")
 	
@@ -300,14 +307,30 @@ plotOverlay <- function(
 			coords$background <- as.character(coords$background)
 		}
 		
-		fg <- .resolve_overlay_variable(
+		if (identical(fg_type, "bivariate")) {
+			fg <- .prepare_bivariate_values(
+				sce = sce,
+				features = foreground,
+				assay = fg_assay,
+				limits = fg_limits,
+				palette = fg_palette %||% "orange_blue"
+			)
+		} else {
+			.validate_string_arg(foreground, "foreground")
+			fg <- .resolve_overlay_variable(
 			sce = sce,
 			variable = foreground,
 					layer_name = "foreground",
 					assay = fg_assay,
 					type = fg_type
 				)
-		coords$foreground <- fg$values
+		}
+		coords$foreground <- if (identical(fg$type, "bivariate")) fg$colours else fg$values
+		if (identical(fg$type, "bivariate")) {
+			coords$.fg_x <- fg$values_x
+			coords$.fg_y <- fg$values_y
+			coords$.fg_colour <- fg$colours
+		}
 		fg_type <- fg$type
 		
 	if (identical(fg$type, "none")) {
@@ -315,7 +338,12 @@ plotOverlay <- function(
 	} else {
 		# Apply subset filter to foreground only (background remains complete)
 		idx <- .eval_subset(fg_subset_cells, sce)
-		coords$foreground[!idx] <- NA
+		if (identical(fg$type, "bivariate")) {
+			coords$foreground[!idx] <- NA_character_
+			coords$.fg_colour[!idx] <- NA_character_
+		} else {
+			coords$foreground[!idx] <- NA
+		}
 
 		# Create filtered coords for foreground layer (only subset cells with non-NA foreground)
 		coords_fg <- coords[!is.na(coords$foreground), ]
@@ -329,13 +357,17 @@ plotOverlay <- function(
 		arg_name = "bg_limits",
 		layer_name = "background"
 	)
-	fg_limits <- .resolve_layer_limits(
-		limits = fg_limits,
-		values = coords_fg$foreground,
-		type = fg$type,
-		arg_name = "fg_limits",
-		layer_name = "foreground"
-	)
+	if (identical(fg$type, "bivariate")) {
+		fg_limits <- list(x = fg$limits_x, y = fg$limits_y)
+	} else {
+		fg_limits <- .resolve_layer_limits(
+			limits = fg_limits,
+			values = coords_fg$foreground,
+			type = fg$type,
+			arg_name = "fg_limits",
+			layer_name = "foreground"
+		)
+	}
 	
 		# === Build ggplot ===
 		# Background layer
@@ -467,6 +499,18 @@ plotOverlay <- function(
 				limits = fg_values,
 				guide = if (fg_legend) "legend" else "none"
 			)
+	} else if (fg$type == "bivariate") {
+		# Bivariate colours are precomputed from two continuous variables, so no
+		# ggplot scale or automatic legend is added in this first implementation.
+		p <- p + .geom_point_overlay(
+			data = coords_fg,
+			mapping = aes(.data$X, .data$Y),
+			raster = fg_raster,
+			raster_dpi = raster_dpi,
+			colour = coords_fg$.fg_colour,
+			size = fg_point_size,
+			na.rm = TRUE
+		)
 	}
 	
 	# Titles
@@ -479,7 +523,7 @@ plotOverlay <- function(
 	}
 	if (!is.null(title)) p <- p + labs(title = title)
 	else if (identical(fg$type, "none")) p <- p + labs(title = "")
-	else p <- p + labs(title = foreground)
+	else p <- p + labs(title = paste(fg$label, collapse = " + "))
 	
 	return(p)
 }
@@ -503,6 +547,11 @@ plotOverlay <- function(
 # Helper to validate colour scale limit arguments.
 .validate_layer_limits <- function(limits, arg_name) {
 	if (is.null(limits)) {
+		return(invisible(TRUE))
+	}
+	if (identical(arg_name, "fg_limits") && is.list(limits) && all(c("x", "y") %in% names(limits))) {
+		.validate_layer_limits(limits$x, paste0(arg_name, "$x"))
+		.validate_layer_limits(limits$y, paste0(arg_name, "$y"))
 		return(invisible(TRUE))
 	}
 	if (is.character(limits) && length(limits) == 1L && !is.na(limits) &&
@@ -561,6 +610,116 @@ plotOverlay <- function(
 	return(limits)
 }
 
+# Helper to resolve one bivariate foreground feature or colData column.
+.resolve_bivariate_feature <- function(sce, feature, assay) {
+	.validate_string_arg(feature, "foreground")
+	if (feature %in% SummarizedExperiment::rownames(sce)) {
+		.validate_string_arg(assay, "fg_assay")
+		if (!(assay %in% SummarizedExperiment::assayNames(sce))) {
+			stop(
+				"`fg_assay` must be one of assayNames(sce). Unknown assay: ",
+				assay,
+				".",
+				call. = FALSE
+			)
+		}
+		return(as.numeric(SummarizedExperiment::assay(sce, assay)[feature, ]))
+	}
+	if (feature %in% colnames(SummarizedExperiment::colData(sce))) {
+		values <- SummarizedExperiment::colData(sce)[[feature]]
+		if (!is.numeric(values)) {
+			stop("`fg_type = 'bivariate'` requires both foreground variables to be numeric.", call. = FALSE)
+		}
+		return(values)
+	}
+	stop(
+		"`foreground` entries for `fg_type = 'bivariate'` must be features in rownames(sce) ",
+		"or numeric columns in colData(sce). Unknown foreground: ",
+		feature,
+		".",
+		call. = FALSE
+	)
+}
+
+# Helper to construct bivariate foreground colours from two numeric variables.
+.prepare_bivariate_values <- function(sce,
+																			features,
+																			assay,
+																			limits = NULL,
+																			n_bins = 9L,
+																			palette = "orange_blue") {
+	if (!is.character(features) || length(features) != 2L || anyNA(features)) {
+		stop("`fg_type = 'bivariate'` requires `foreground` to be a character vector of length 2.", call. = FALSE)
+	}
+	.validate_layer_limits(limits, "fg_limits")
+	x <- .resolve_bivariate_feature(sce, features[1], assay)
+	y <- .resolve_bivariate_feature(sce, features[2], assay)
+	if (!is.numeric(x) || !is.numeric(y)) {
+		stop("`fg_type = 'bivariate'` requires both foreground variables to be numeric.", call. = FALSE)
+	}
+	limits_x <- if (is.list(limits)) limits$x else .range_or_null(x, "fg_limits$x")
+	limits_y <- if (is.list(limits)) limits$y else .range_or_null(y, "fg_limits$y")
+	palette_matrix <- .bivariate_palette(palette, n_bins)
+	x_scaled <- scales::rescale(x, from = limits_x)
+	y_scaled <- scales::rescale(y, from = limits_y)
+	x_scaled <- pmin(pmax(x_scaled, 0), 1)
+	y_scaled <- pmin(pmax(y_scaled, 0), 1)
+	breaks <- seq(0, 1, length.out = n_bins + 1L)
+	x_bin <- cut(x_scaled, breaks = breaks, include.lowest = TRUE, labels = FALSE)
+	y_bin <- cut(y_scaled, breaks = breaks, include.lowest = TRUE, labels = FALSE)
+	colours <- rep(NA_character_, length(x))
+	ok <- !is.na(x_bin) & !is.na(y_bin)
+	colours[ok] <- palette_matrix[cbind(y_bin[ok], x_bin[ok])]
+	return(list(
+		feature_x = features[1],
+		feature_y = features[2],
+		values_x = x,
+		values_y = y,
+		scaled_x = x_scaled,
+		scaled_y = y_scaled,
+		colours = colours,
+		limits_x = limits_x,
+		limits_y = limits_y,
+		palette = palette_matrix,
+		values = colours,
+		type = "bivariate",
+		source = "bivariate",
+		label = features
+	))
+}
+
+# Helper to create an n x n bivariate palette matrix by RGB bilinear blending.
+.bivariate_palette <- function(name = "orange_blue", n = 9L) {
+	if (!is.character(name) || length(name) != 1L || is.na(name) ||
+			!identical(name, "orange_blue")) {
+		stop("`fg_palette` for `fg_type = 'bivariate'` must be NULL or \"orange_blue\".", call. = FALSE)
+	}
+	if (!is.numeric(n) || length(n) != 1L || is.na(n) || n < 2L) {
+		stop("`n` must be a single numeric value greater than or equal to 2.", call. = FALSE)
+	}
+	n <- as.integer(n)
+	corners <- grDevices::col2rgb(c(
+		low_low = "#E8E8E8",
+		high_low = "#F28E2B",
+		low_high = "#4E79A7",
+		high_high = "#4B1D5A"
+	)) / 255
+	out <- matrix(NA_character_, nrow = n, ncol = n)
+	seq01 <- seq(0, 1, length.out = n)
+	for (iy in seq_len(n)) {
+		for (ix in seq_len(n)) {
+			tx <- seq01[ix]
+			ty <- seq01[iy]
+			rgb <- (1 - tx) * (1 - ty) * corners[, "low_low"] +
+				tx * (1 - ty) * corners[, "high_low"] +
+				(1 - tx) * ty * corners[, "low_high"] +
+				tx * ty * corners[, "high_high"]
+			out[iy, ix] <- grDevices::rgb(rgb[1], rgb[2], rgb[3])
+		}
+	}
+	return(out)
+}
+
 # Helper to resolve global categorical values for consistent panel palettes.
 .resolve_categorical_values <- function(values, fallback) {
 	if (is.null(values)) {
@@ -589,13 +748,22 @@ plotOverlay <- function(
 		assay = bg_assay,
 		type = bg_type
 	)
-	fg <- .resolve_overlay_variable(
-		sce = sce,
-		variable = foreground,
-		layer_name = "foreground",
-		assay = fg_assay,
-		type = fg_type
-	)
+	if (identical(fg_type, "bivariate")) {
+		fg <- .prepare_bivariate_values(
+			sce = sce,
+			features = foreground,
+			assay = fg_assay,
+			limits = NULL
+		)
+	} else {
+		fg <- .resolve_overlay_variable(
+			sce = sce,
+			variable = foreground,
+			layer_name = "foreground",
+			assay = fg_assay,
+			type = fg_type
+		)
+	}
 
 	resolved_bg_limits <- .resolve_layer_limits(
 		limits = bg_limits,
@@ -606,16 +774,33 @@ plotOverlay <- function(
 	)
 	fg_values_for_limits <- if (identical(fg$type, "none")) {
 		fg$values
+	} else if (identical(fg$type, "bivariate")) {
+		NULL
 	} else {
 		fg$values[subset_idx]
 	}
-	resolved_fg_limits <- .resolve_layer_limits(
-		limits = fg_limits,
-		values = fg_values_for_limits,
-		type = fg$type,
-		arg_name = "fg_limits",
-		layer_name = "foreground"
-	)
+	if (identical(fg$type, "bivariate")) {
+		if (is.character(fg_limits) && identical(fg_limits, "shared")) {
+			resolved_fg_limits <- list(
+				x = .range_or_null(fg$values_x[subset_idx], "fg_limits$x"),
+				y = .range_or_null(fg$values_y[subset_idx], "fg_limits$y")
+			)
+		} else if (is.list(fg_limits)) {
+			resolved_fg_limits <- fg_limits
+		} else if (is.null(fg_limits)) {
+			resolved_fg_limits <- NULL
+		} else {
+			resolved_fg_limits <- list(x = fg_limits, y = fg_limits)
+		}
+	} else {
+		resolved_fg_limits <- .resolve_layer_limits(
+			limits = fg_limits,
+			values = fg_values_for_limits,
+			type = fg$type,
+			arg_name = "fg_limits",
+			layer_name = "foreground"
+		)
+	}
 
 	bg_values <- NULL
 	if (identical(bg$type, "categorical")) {
