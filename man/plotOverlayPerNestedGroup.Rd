@@ -162,9 +162,11 @@ completely covers it with white. Defaults to \code{0.6}.}
 
 \item{fg_limits}{Limits for the foreground colour scale when the foreground is
 continuous. It can be \code{NULL}, a strictly increasing numeric vector of
-length two, or \code{"shared"}. With \code{"shared"}, one range is computed
-after the global \code{fg_subset_cells} filter and reused in every panel.
-Defaults to \code{NULL}.}
+length two, or \code{"shared"}. For \code{fg_type = "bivariate"},
+\code{NULL} uses automatic per-panel scaling and \code{"shared"} computes
+separate shared ranges for the two numeric foreground variables. Numeric
+foreground limits are not supported for bivariate colours. Defaults to
+\code{NULL}.}
 
 \item{bg_limits}{Limits for the background colour scale when the background is
 continuous. It can be \code{NULL}, a strictly increasing numeric vector of
@@ -226,8 +228,10 @@ groups. This makes it possible to compare where samples or other inner groups
 are located in the same reduced dimension space, while keeping the broader
 outer grouping visible in the layout.
 
-With \code{fg_limits = "shared"}, one foreground range is computed after the
-global \code{fg_subset_cells} filter and before splitting into panels. With
+With \code{fg_limits = "shared"}, foreground ranges are computed after the
+global \code{fg_subset_cells} filter and before splitting into panels. In
+bivariate mode, separate shared ranges are computed for the two numeric
+foreground variables so colours are comparable across panels. With
 \code{bg_limits = "shared"}, one background range is computed across all
 cells. Categorical foreground and background palettes are based on global
 categorical values, so colours remain consistent across panels. Named

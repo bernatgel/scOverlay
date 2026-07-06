@@ -147,11 +147,12 @@ it with white. Defaults to \code{0.9}.}
 
 \item{fg_limits}{Limits for the foreground colour scale when the foreground is
 continuous. It can be \code{NULL}, a strictly increasing numeric vector of
-length two, or \code{"shared"}. In bivariate mode, shared grouped plots use
-separate limits for the two foreground variables. In a single plot,
-\code{"shared"} resolves to the range of foreground values. It is ignored
-with a warning when the foreground layer is not continuous or bivariate.
-Defaults to \code{NULL}.}
+length two, or \code{"shared"}. For \code{fg_type = "bivariate"},
+\code{NULL} uses automatic scaling and \code{"shared"} can be used by grouped
+plotting helpers for comparable bivariate colours across panels. Numeric
+foreground limits are not supported for bivariate colours. It is ignored with
+a warning when the foreground layer is not continuous or bivariate. Defaults
+to \code{NULL}.}
 
 \item{bg_limits}{Limits for the background colour scale when the background is
 continuous. It can be \code{NULL}, a strictly increasing numeric vector of

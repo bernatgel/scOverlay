@@ -150,11 +150,12 @@
 #'
 #' @param fg_limits Limits for the foreground colour scale when the foreground is
 #' continuous. It can be \code{NULL}, a strictly increasing numeric vector of
-#' length two, or \code{"shared"}. In bivariate mode, shared grouped plots use
-#' separate limits for the two foreground variables. In a single plot,
-#' \code{"shared"} resolves to the range of foreground values. It is ignored
-#' with a warning when the foreground layer is not continuous or bivariate.
-#' Defaults to \code{NULL}.
+#' length two, or \code{"shared"}. For \code{fg_type = "bivariate"},
+#' \code{NULL} uses automatic scaling and \code{"shared"} can be used by grouped
+#' plotting helpers for comparable bivariate colours across panels. Numeric
+#' foreground limits are not supported for bivariate colours. It is ignored with
+#' a warning when the foreground layer is not continuous or bivariate. Defaults
+#' to \code{NULL}.
 #'
 #' @param bg_limits Limits for the background colour scale when the background is
 #' continuous. It can be \code{NULL}, a strictly increasing numeric vector of
@@ -286,7 +287,6 @@ plotOverlay <- function(
 	.validate_raster_args(bg_raster, fg_raster, raster_dpi)
 	.validate_string_arg(background, "background")
 	.validate_layer_limits(bg_limits, "bg_limits")
-	.validate_layer_limits(fg_limits, "fg_limits")
 	
 	# Extract embedding coordinates
 	coords <- .get_reduced_dim_coords(sce, reduced_dim)
@@ -294,6 +294,11 @@ plotOverlay <- function(
 		bg_type <- match.arg(bg_type)
 		fg_type <- match.arg(fg_type)
 		fg_order <- match.arg(fg_order)
+		if (identical(fg_type, "bivariate")) {
+			.validate_bivariate_fg_limits(fg_limits)
+		} else {
+			.validate_layer_limits(fg_limits, "fg_limits")
+		}
 
 		bg <- .resolve_overlay_variable(
 			sce = sce,
@@ -549,11 +554,6 @@ plotOverlay <- function(
 	if (is.null(limits)) {
 		return(invisible(TRUE))
 	}
-	if (identical(arg_name, "fg_limits") && is.list(limits) && all(c("x", "y") %in% names(limits))) {
-		.validate_layer_limits(limits$x, paste0(arg_name, "$x"))
-		.validate_layer_limits(limits$y, paste0(arg_name, "$y"))
-		return(invisible(TRUE))
-	}
 	if (is.character(limits) && length(limits) == 1L && !is.na(limits) &&
 			identical(limits, "shared")) {
 		return(invisible(TRUE))
@@ -568,6 +568,29 @@ plotOverlay <- function(
 		stop("`", arg_name, "` must be strictly increasing.", call. = FALSE)
 	}
 	return(invisible(TRUE))
+}
+
+# Helper to validate user-facing bivariate foreground limits.
+.validate_bivariate_fg_limits <- function(limits) {
+	if (is.null(limits)) {
+		return(invisible(TRUE))
+	}
+	if (inherits(limits, "scOverlay_bivariate_limits")) {
+		return(invisible(TRUE))
+	}
+	if (is.character(limits) && length(limits) == 1L && !is.na(limits) &&
+			identical(limits, "shared")) {
+		return(invisible(TRUE))
+	}
+	stop(
+		"`fg_limits` must be NULL or \"shared\" when `fg_type = \"bivariate\"`. ",
+		"Numeric foreground limits are not supported for bivariate colours.",
+		call. = FALSE
+	)
+}
+
+.new_bivariate_limits <- function(x, y) {
+	structure(list(x = x, y = y), class = "scOverlay_bivariate_limits")
 }
 
 # Helper to resolve NULL/numeric/"shared" limits for one layer.
@@ -651,14 +674,14 @@ plotOverlay <- function(
 	if (!is.character(features) || length(features) != 2L || anyNA(features)) {
 		stop("`fg_type = 'bivariate'` requires `foreground` to be a character vector of length 2.", call. = FALSE)
 	}
-	.validate_layer_limits(limits, "fg_limits")
+	.validate_bivariate_fg_limits(limits)
 	x <- .resolve_bivariate_feature(sce, features[1], assay)
 	y <- .resolve_bivariate_feature(sce, features[2], assay)
 	if (!is.numeric(x) || !is.numeric(y)) {
 		stop("`fg_type = 'bivariate'` requires both foreground variables to be numeric.", call. = FALSE)
 	}
-	limits_x <- if (is.list(limits)) limits$x else .range_or_null(x, "fg_limits$x")
-	limits_y <- if (is.list(limits)) limits$y else .range_or_null(y, "fg_limits$y")
+	limits_x <- if (inherits(limits, "scOverlay_bivariate_limits")) limits$x else .range_or_null(x, "fg_limits$x")
+	limits_y <- if (inherits(limits, "scOverlay_bivariate_limits")) limits$y else .range_or_null(y, "fg_limits$y")
 	palette_matrix <- .bivariate_palette(palette, n_bins)
 	x_scaled <- scales::rescale(x, from = limits_x)
 	y_scaled <- scales::rescale(y, from = limits_y)
@@ -781,16 +804,16 @@ plotOverlay <- function(
 	}
 	if (identical(fg$type, "bivariate")) {
 		if (is.character(fg_limits) && identical(fg_limits, "shared")) {
-			resolved_fg_limits <- list(
-				x = .range_or_null(fg$values_x[subset_idx], "fg_limits$x"),
-				y = .range_or_null(fg$values_y[subset_idx], "fg_limits$y")
+			resolved_fg_limits <- .new_bivariate_limits(
+				.range_or_null(fg$values_x[subset_idx], "fg_limits$x"),
+				.range_or_null(fg$values_y[subset_idx], "fg_limits$y")
 			)
-		} else if (is.list(fg_limits)) {
+		} else if (inherits(fg_limits, "scOverlay_bivariate_limits")) {
 			resolved_fg_limits <- fg_limits
 		} else if (is.null(fg_limits)) {
 			resolved_fg_limits <- NULL
 		} else {
-			resolved_fg_limits <- list(x = fg_limits, y = fg_limits)
+			.validate_bivariate_fg_limits(fg_limits)
 		}
 	} else {
 		resolved_fg_limits <- .resolve_layer_limits(

@@ -22,8 +22,10 @@
 #' This makes it possible to compare where cells from different samples or
 #' sample types are located in the same reduced dimension space.
 #'
-#' With \code{fg_limits = "shared"}, one foreground range is computed after the
-#' global \code{fg_subset_cells} filter and before splitting into groups. With
+#' With \code{fg_limits = "shared"}, foreground ranges are computed after the
+#' global \code{fg_subset_cells} filter and before splitting into groups. In
+#' bivariate mode, separate shared ranges are computed for the two numeric
+#' foreground variables so colours are comparable across panels. With
 #' \code{bg_limits = "shared"}, one background range is computed across all
 #' cells. Categorical foreground and background palettes are based on global
 #' categorical values, so colours remain consistent across panels. Named
@@ -153,9 +155,11 @@
 #'
 #' @param fg_limits Limits for the foreground colour scale when the foreground is
 #' continuous. It can be \code{NULL}, a strictly increasing numeric vector of
-#' length two, or \code{"shared"}. With \code{"shared"}, one range is computed
-#' after the global \code{fg_subset_cells} filter and reused in every panel.
-#' Defaults to \code{NULL}.
+#' length two, or \code{"shared"}. For \code{fg_type = "bivariate"},
+#' \code{NULL} uses automatic per-panel scaling and \code{"shared"} computes
+#' separate shared ranges for the two numeric foreground variables. Numeric
+#' foreground limits are not supported for bivariate colours. Defaults to
+#' \code{NULL}.
 #'
 #' @param bg_limits Limits for the background colour scale when the background is
 #' continuous. It can be \code{NULL}, a strictly increasing numeric vector of
@@ -259,13 +263,17 @@ plotOverlayPerGroup <- function(
 	.validate_coldata_column(sce, group_col, "group_col")
 	.validate_raster_args(bg_raster, fg_raster, raster_dpi)
 	.validate_layer_limits(bg_limits, "bg_limits")
-	.validate_layer_limits(fg_limits, "fg_limits")
 	if (!.is_flag(shared_legend)) {
 		stop("`shared_legend` must be TRUE or FALSE.", call. = FALSE)
 	}
 	bg_type <- match.arg(bg_type)
 	fg_type <- match.arg(fg_type)
 	fg_order <- match.arg(fg_order)
+	if (identical(fg_type, "bivariate")) {
+		.validate_bivariate_fg_limits(fg_limits)
+	} else {
+		.validate_layer_limits(fg_limits, "fg_limits")
+	}
 	
 	vals <- colData(sce)[[group_col]]
 	vals_chr <- tryCatch(as.character(vals), error = function(e) rep(NA_character_, ncol(sce)))

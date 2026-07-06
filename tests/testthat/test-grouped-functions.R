@@ -233,6 +233,18 @@ test_that("plotOverlayPerGroup supports shared limits and legends", {
   bivar_layers <- Filter(function(x) nrow(x) > 0L, bivar_layers)
   expect_true(all(vapply(bivar_layers, function(x) ".fg_colour" %in% colnames(x), logical(1))))
 
+  expect_error(
+    plotOverlayPerGroup(
+      sce,
+      foreground = c("numeric_fg", "numeric_y"),
+      group_col = "sample_type",
+      background = "solid",
+      fg_type = "bivariate",
+      fg_limits = c(0, 5)
+    ),
+    "Numeric foreground limits are not supported"
+  )
+
   g_bg <- plotOverlayPerGroup(
     sce,
     foreground = "SOX10",

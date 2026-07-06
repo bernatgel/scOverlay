@@ -1503,13 +1503,36 @@ test_that("fg_type bivariate uses two numeric foreground variables", {
     reduced_dim = "TSNE",
     background = "solid",
     foreground = c("numeric_score", "score_y"),
-    fg_type = "bivariate"
+    fg_type = "bivariate",
+    fg_limits = NULL
   )
   foreground <- get_foreground_layer_data(p)
   expect_s3_class(p, "ggplot")
   expect_true(".fg_colour" %in% colnames(foreground))
   expect_equal(nrow(foreground), 2L)
   expect_true(all(grepl("^#[0-9A-Fa-f]{6}$", foreground$.fg_colour)))
+
+  p_shared <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("numeric_score", "score_y"),
+    fg_type = "bivariate",
+    fg_limits = "shared"
+  )
+  expect_s3_class(p_shared, "ggplot")
+
+  expect_error(
+    plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = c("numeric_score", "score_y"),
+      fg_type = "bivariate",
+      fg_limits = c(0, 5)
+    ),
+    "Numeric foreground limits are not supported"
+  )
 
   expect_error(
     plotOverlay(
