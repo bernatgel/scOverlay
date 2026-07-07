@@ -1,7 +1,7 @@
 Package: scOverlay
 Type: Package
 Title: Multilayer plots for single-cell data
-Version: 0.99.1
+Version: 0.99.2
 Authors@R: 
     c(person(given = "Bernat", family = "Gel", role = c("aut", "cre", "fnd"),
              email = "bgel@igtp.cat",
