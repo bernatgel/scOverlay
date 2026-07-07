@@ -60,10 +60,23 @@ test_that("getPalette resolves external palette names", {
   expect_equal(names(pal_brewer), c("A", "B", "C"))
   expect_valid_colours(pal_brewer)
 
-  pal_viridis <- getPalette("magma", type = "continuous", n = 5)
-  expect_type(pal_viridis, "character")
-  expect_length(pal_viridis, 5)
-  expect_valid_colours(pal_viridis)
+  viridis_names <- c(
+    "viridis",
+    "magma",
+    "inferno",
+    "plasma",
+    "cividis",
+    "rocket",
+    "mako",
+    "turbo"
+  )
+  for (pal in viridis_names) {
+    cols <- getPalette(pal, type = "continuous", n = 5)
+    expect_type(cols, "character")
+    expect_length(cols, 5)
+    expect_true(all(grepl("^#", cols)))
+    expect_valid_colours(cols)
+  }
 })
 
 test_that("getPalette honors named categorical colors when values match names", {

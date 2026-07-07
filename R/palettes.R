@@ -463,15 +463,34 @@ listPalettes <- function(type = c("all", "categorical", "continuous"),
 		return(palettes[[name]])
 	}
 
-	viridis_fun <- tryCatch(get(name, envir = asNamespace("viridisLite")), error = function(e) NULL)
-	if (is.function(viridis_fun)) {
-		return(viridis_fun(n))
-	}
+	viridis <- .viridis_palette(name, n)
+	if (!is.null(viridis)) return(viridis)
 
 	brewer <- .brewer_palette(name, type = type, n = n)
 	if (!is.null(brewer)) return(brewer)
 
 	stop("Unknown palette `", name, "`.", call. = FALSE)
+}
+
+# Look up viridisLite palettes with explicit namespace references so static
+# package checks can see the imported namespace is used.
+.viridis_palette <- function(name, n) {
+	fun <- switch(
+		name,
+		viridis = viridisLite::viridis,
+		magma = viridisLite::magma,
+		inferno = viridisLite::inferno,
+		plasma = viridisLite::plasma,
+		cividis = viridisLite::cividis,
+		rocket = viridisLite::rocket,
+		mako = viridisLite::mako,
+		turbo = viridisLite::turbo,
+		NULL
+	)
+	if (is.null(fun)) {
+		return(NULL)
+	}
+	return(fun(n))
 }
 
 # Look up a ColorBrewer palette by exact name. The type argument is currently
