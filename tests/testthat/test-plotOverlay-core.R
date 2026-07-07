@@ -1567,6 +1567,159 @@ test_that("fg_type bivariate uses two numeric foreground variables", {
   )
 })
 
+test_that("fg_type combination uses numeric foreground combinations", {
+  sce <- make_na_foreground_sce()
+  SummarizedExperiment::colData(sce)$score_x <- c(0, 0.2, 1, NA, 2)
+  SummarizedExperiment::colData(sce)$score_y <- c(0, 1, 0, 3, 4)
+  SummarizedExperiment::colData(sce)$score_z <- c(1, 0, 2, 3, 0)
+
+  p_two <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("score_x", "score_y"),
+    fg_type = "combination",
+    fg_threshold = 0
+  )
+  expect_s3_class(p_two, "ggplot")
+
+  p_three <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("score_x", "score_y", "score_z"),
+    fg_type = "combination",
+    fg_threshold = 0
+  )
+  expect_s3_class(p_three, "ggplot")
+
+  expect_error(
+    plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = "score_x",
+      fg_type = "combination"
+    ),
+    "between 2 and 5"
+  )
+
+  for (i in seq_len(6L)) {
+    SummarizedExperiment::colData(sce)[[paste0("many_", i)]] <- seq_len(ncol(sce))
+  }
+  expect_error(
+    plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = paste0("many_", seq_len(6L)),
+      fg_type = "combination"
+    ),
+    "between 2 and 5"
+  )
+
+  expect_error(
+    plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = c("score_x", "categorical_state"),
+      fg_type = "combination"
+    ),
+    "numeric"
+  )
+
+  expect_s3_class(plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("score_x", "score_y"),
+    fg_type = "combination",
+    fg_threshold = c(0, 1)
+  ), "ggplot")
+
+  expect_s3_class(plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("score_x", "score_y"),
+    fg_type = "combination",
+    fg_threshold = c(score_x = 0, score_y = 1)
+  ), "ggplot")
+
+  expect_error(
+    plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = c("score_x", "score_y"),
+      fg_type = "combination",
+      fg_threshold = c(score_x = 0)
+    ),
+    "Named `fg_threshold` values must include all foreground variables"
+  )
+
+  expect_s3_class(plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("score_x", "score_y"),
+    fg_type = "combination",
+    fg_threshold = "median"
+  ), "ggplot")
+
+  expect_error(
+    plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = c("score_x", "score_y"),
+      fg_type = "combination",
+      fg_threshold = "mean"
+    ),
+    "numeric or \"median\""
+  )
+
+  expect_error(
+    plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = c("score_x", "score_y"),
+      fg_type = "combination",
+      fg_limits = c(0, 5)
+    ),
+    "`fg_limits` is not supported"
+  )
+})
+
+test_that("combination helper returns deterministic labels and strict thresholds", {
+  sce <- make_na_foreground_sce()
+  SummarizedExperiment::colData(sce)$Gene1 <- c(0, 1, 0, NA, 2)
+  SummarizedExperiment::colData(sce)$Gene2 <- c(0, 0, 1, 1, 2)
+
+  res <- scOverlay:::.prepare_combination_values(
+    sce,
+    features = c("Gene1", "Gene2"),
+    assay = "logcounts",
+    threshold = 0
+  )
+
+  expect_true(is.character(res$labels) || is.factor(res$labels))
+  expect_equal(length(res$labels), ncol(sce))
+  expect_equal(length(res$thresholds), 2L)
+  expect_true(all(c(
+    "Gene1-/Gene2-",
+    "Gene1+/Gene2-",
+    "Gene1-/Gene2+",
+    "Gene1+/Gene2+"
+  ) %in% levels(res$labels)))
+  expect_identical(as.character(res$labels[1]), "Gene1-/Gene2-")
+  expect_identical(as.character(res$labels[2]), "Gene1+/Gene2-")
+  expect_identical(as.character(res$labels[3]), "Gene1-/Gene2+")
+  expect_true(is.na(res$labels[4]))
+})
+
 test_that("plotOverlay validates key inputs", {
   sce <- get_example_sce()
 

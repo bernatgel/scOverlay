@@ -100,12 +100,19 @@
 #' @param fg_type A character value indicating how the foreground variable should
 #' be represented when \code{foreground} is not \code{"solid"} or
 #' \code{"none"}. Accepted values are \code{"auto"}, \code{"continuous"} and
-#' \code{"categorical"} and \code{"bivariate"}. With \code{"auto"}, feature
-#' values are treated as continuous and \code{colData} variables are treated as
-#' continuous only when they are numeric. \code{"bivariate"} blends colours from
-#' two continuous foreground variables and requires \code{foreground} to contain
-#' exactly two numeric features or \code{colData(sce)} columns. Defaults to
-#' \code{"auto"}.
+#' \code{"categorical"}, \code{"bivariate"} and \code{"combination"}. With
+#' \code{"auto"}, feature values are treated as continuous and \code{colData}
+#' variables are treated as continuous only when they are numeric.
+#' \code{"combination"} calls 2 to 5 numeric foreground variables expressed
+#' using \code{fg_threshold} and treats the resulting combinations as
+#' categorical values. Defaults to \code{"auto"}.
+#'
+#' @param fg_threshold Thresholds used only when
+#' \code{fg_type = "combination"}. It can be a single numeric value, a numeric
+#' vector with one threshold per foreground variable, a named numeric vector
+#' containing all foreground variable names, or \code{"median"}. Values are
+#' expressed when \code{value > threshold}; with the default \code{0}, exact zero
+#' values are not expressed. Defaults to \code{0}.
 #'
 #' @param fg_order A character value controlling the drawing order of foreground
 #' cells within each panel. Accepted values are \code{"input"},
@@ -158,8 +165,9 @@
 #' length two, or \code{"shared"}. For \code{fg_type = "bivariate"},
 #' \code{NULL} uses automatic per-panel scaling and \code{"shared"} computes
 #' separate shared ranges for the two numeric foreground variables. Numeric
-#' foreground limits are not supported for bivariate colours. Defaults to
-#' \code{NULL}.
+#' foreground limits are not supported for bivariate colours. For
+#' \code{fg_type = "combination"}, \code{NULL} and \code{"shared"} are accepted
+#' but numeric limits are not supported. Defaults to \code{NULL}.
 #'
 #' @param bg_limits Limits for the background colour scale when the background is
 #' continuous. It can be \code{NULL}, a strictly increasing numeric vector of
@@ -241,7 +249,8 @@ plotOverlayPerGroup <- function(
 			bg_type = c("auto","continuous","categorical"),
 			bg_assay = "logcounts",
 			fg_assay = "logcounts",
-			fg_type = c("auto","continuous","categorical","bivariate"),
+			fg_type = c("auto","continuous","categorical","bivariate","combination"),
+			fg_threshold = 0,
 		fg_order = c("input", "random", "ascending", "descending"),
 		bg_point_size = 2,
 		fg_point_size = 0.5,
@@ -271,6 +280,8 @@ plotOverlayPerGroup <- function(
 	fg_order <- match.arg(fg_order)
 	if (identical(fg_type, "bivariate")) {
 		.validate_bivariate_fg_limits(fg_limits)
+	} else if (identical(fg_type, "combination")) {
+		.validate_combination_fg_limits(fg_limits)
 	} else {
 		.validate_layer_limits(fg_limits, "fg_limits")
 	}
@@ -306,6 +317,7 @@ plotOverlayPerGroup <- function(
 		fg_type = fg_type,
 		bg_assay = bg_assay,
 		fg_assay = fg_assay,
+		fg_threshold = fg_threshold,
 		subset_idx = subset_idx,
 		bg_limits = bg_limits,
 		fg_limits = fg_limits
@@ -326,6 +338,7 @@ plotOverlayPerGroup <- function(
 				bg_type = bg_type,
 				bg_assay = bg_assay,
 				fg_assay = fg_assay,
+			fg_threshold = fg_threshold,
 			fg_type = fg_type,
 			fg_order = fg_order,
 			bg_point_size = bg_point_size,

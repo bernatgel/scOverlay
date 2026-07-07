@@ -614,6 +614,55 @@ test_that("plotOverlayPerNestedGroup supports shared limits and legends", {
   })
 })
 
+test_that("grouped plots support combination foregrounds", {
+  sce <- get_example_sce()
+  SummarizedExperiment::colData(sce)$combo_a <- seq_len(ncol(sce)) %% 3
+  SummarizedExperiment::colData(sce)$combo_b <- rev(seq_len(ncol(sce))) %% 4
+
+  g <- plotOverlayPerGroup(
+    sce,
+    foreground = c("combo_a", "combo_b"),
+    group_col = "sample_type",
+    background = "solid",
+    fg_type = "combination",
+    fg_threshold = 0,
+    fg_limits = "shared",
+    shared_legend = TRUE
+  )
+  expect_s3_class(g, "patchwork")
+
+  expect_error(
+    plotOverlayPerGroup(
+      sce,
+      foreground = c("combo_a", "combo_b"),
+      group_col = "sample_type",
+      background = "solid",
+      fg_type = "combination",
+      fg_limits = c(0, 5)
+    ),
+    "`fg_limits` is not supported"
+  )
+})
+
+test_that("nested grouped plots support combination foregrounds", {
+  sce <- get_example_sce()
+  SummarizedExperiment::colData(sce)$combo_a <- seq_len(ncol(sce)) %% 3
+  SummarizedExperiment::colData(sce)$combo_b <- rev(seq_len(ncol(sce))) %% 4
+
+  g <- plotOverlayPerNestedGroup(
+    sce,
+    foreground = c("combo_a", "combo_b"),
+    group_col = "sample",
+    outer_col = "sample_type",
+    background = "solid",
+    fg_type = "combination",
+    fg_threshold = 0,
+    fg_limits = "shared",
+    shared_legend = TRUE
+  )
+  expect_s3_class(g, "patchwork")
+})
+
 test_that("plotOverlayPerNestedGroup handles shared limits with empty foreground panels", {
   sce <- get_example_sce()
 

@@ -50,8 +50,10 @@
 #' feature in \code{rownames(sce)}, in which case values are taken from
 #' \code{fg_assay}, or a column in \code{colData(sce)}. When
 #' \code{fg_type = "bivariate"}, it must be a character vector of exactly two
-#' numeric features or \code{colData(sce)} columns. This argument has no default
-#' and must be provided by the user.
+#' numeric features or \code{colData(sce)} columns. When
+#' \code{fg_type = "combination"}, it must contain between 2 and 5 numeric
+#' features or \code{colData(sce)} columns. This argument has no default and
+#' must be provided by the user.
 #'
 #' @param background A single character value specifying the background layer.
 #' It can be \code{"solid"} to draw all background cells with a fixed colour,
@@ -81,11 +83,13 @@
 #' @param fg_type A character value indicating how the foreground variable should
 #' be represented when \code{foreground} is not \code{"solid"} or \code{"none"}.
 #' Accepted values are \code{"auto"}, \code{"continuous"},
-#' \code{"categorical"} and \code{"bivariate"}. With \code{"auto"}, feature
-#' values are treated as continuous and \code{colData} variables are treated as
-#' continuous only when they are numeric. \code{"bivariate"} blends colours from
-#' two continuous foreground variables and requires \code{foreground} to contain
-#' exactly two numeric features or \code{colData(sce)} columns. Defaults to
+#' \code{"categorical"}, \code{"bivariate"} and \code{"combination"}. With
+#' \code{"auto"}, feature values are treated as continuous and \code{colData}
+#' variables are treated as continuous only when they are numeric.
+#' \code{"bivariate"} blends colours from two continuous foreground variables.
+#' \code{"combination"} calls each of 2 to 5 numeric foreground variables
+#' expressed when its value is greater than \code{fg_threshold}, then treats the
+#' expressed/not-expressed combinations as categorical values. Defaults to
 #' \code{"auto"}.
 #'
 #' @param bg_assay A single character value with the name of the assay to use
@@ -97,6 +101,14 @@
 #' when \code{foreground} is a feature in \code{rownames(sce)}. It is ignored
 #' when \code{foreground = "solid"} or \code{foreground = "none"}. Defaults to
 #' \code{"logcounts"}.
+#'
+#' @param fg_threshold Thresholds used only when
+#' \code{fg_type = "combination"}. It can be a single numeric value, a numeric
+#' vector with one threshold per foreground variable, a named numeric vector
+#' containing all foreground variable names, or the single character value
+#' \code{"median"}. Values are considered expressed when
+#' \code{value > threshold}; with the default \code{0}, exact zero values are
+#' not expressed. Defaults to \code{0}.
 #'
 #' @param fg_order A character value controlling the drawing order of foreground
 #' cells. Accepted values are \code{"input"}, \code{"random"},
@@ -153,9 +165,11 @@
 #' length two, or \code{"shared"}. For \code{fg_type = "bivariate"},
 #' \code{NULL} uses automatic scaling and \code{"shared"} can be used by grouped
 #' plotting helpers for comparable bivariate colours across panels. Numeric
-#' foreground limits are not supported for bivariate colours. It is ignored with
-#' a warning when the foreground layer is not continuous or bivariate. Defaults
-#' to \code{NULL}.
+#' foreground limits are not supported for bivariate colours. For
+#' \code{fg_type = "combination"}, \code{NULL} and \code{"shared"} are accepted
+#' but numeric limits are not supported. It is ignored with a warning when the
+#' foreground layer is not continuous, bivariate or combination. Defaults to
+#' \code{NULL}.
 #'
 #' @param bg_limits Limits for the background colour scale when the background is
 #' continuous. It can be \code{NULL}, a strictly increasing numeric vector of
@@ -250,9 +264,10 @@ plotOverlay <- function(
 		reduced_dim = "TSNE",          
 		fg_subset_cells = NULL,        
 		bg_type = c("auto","continuous","categorical"),
-		fg_type = c("auto","continuous","categorical","bivariate"),
+		fg_type = c("auto","continuous","categorical","bivariate","combination"),
 		bg_assay = "logcounts",        
 		fg_assay = "logcounts",        
+		fg_threshold = 0,
 		fg_order = c("input", "random", "ascending", "descending"),
 		bg_point_size = 4,
 		fg_point_size = 1,
@@ -296,6 +311,8 @@ plotOverlay <- function(
 		fg_order <- match.arg(fg_order)
 		if (identical(fg_type, "bivariate")) {
 			.validate_bivariate_fg_limits(fg_limits)
+		} else if (identical(fg_type, "combination")) {
+			.validate_combination_fg_limits(fg_limits)
 		} else {
 			.validate_layer_limits(fg_limits, "fg_limits")
 		}
@@ -320,6 +337,13 @@ plotOverlay <- function(
 				limits = fg_limits,
 				palette = fg_palette %||% "orange_blue"
 			)
+		} else if (identical(fg_type, "combination")) {
+			fg <- .prepare_combination_values(
+				sce = sce,
+				features = foreground,
+				assay = fg_assay,
+				threshold = fg_threshold
+			)
 		} else {
 			.validate_string_arg(foreground, "foreground")
 			fg <- .resolve_overlay_variable(
@@ -330,7 +354,13 @@ plotOverlay <- function(
 					type = fg_type
 				)
 		}
-		coords$foreground <- if (identical(fg$type, "bivariate")) fg$colours else fg$values
+		coords$foreground <- if (identical(fg$type, "bivariate")) {
+			fg$colours
+		} else if (identical(fg$type, "combination")) {
+			fg$labels
+		} else {
+			fg$values
+		}
 		if (identical(fg$type, "bivariate")) {
 			coords$.fg_x <- fg$values_x
 			coords$.fg_y <- fg$values_y
@@ -364,6 +394,8 @@ plotOverlay <- function(
 	)
 	if (identical(fg$type, "bivariate")) {
 		fg_limits <- list(x = fg$limits_x, y = fg$limits_y)
+	} else if (identical(fg$type, "combination")) {
+		fg_limits <- NULL
 	} else {
 		fg_limits <- .resolve_layer_limits(
 			limits = fg_limits,
@@ -479,7 +511,10 @@ plotOverlay <- function(
 				guide = if (fg_legend) "colourbar" else "none"
 			)
 		
-			} else if (fg$type == "categorical") {
+			} else if (fg$type == "categorical" || fg$type == "combination") {
+			if (identical(fg$type, "combination") && is.null(fg_values)) {
+				fg_values <- levels(fg$labels)
+			}
 			coords_fg$foreground <- as.character(coords_fg$foreground)
 			fg_values <- .resolve_categorical_values(fg_values, coords_fg$foreground)
 			n_fg <- max(1L, length(fg_values))
@@ -593,6 +628,18 @@ plotOverlay <- function(
 	structure(list(x = x, y = y), class = "scOverlay_bivariate_limits")
 }
 
+# Helper to validate combination foreground limits.
+.validate_combination_fg_limits <- function(limits) {
+	if (is.null(limits)) {
+		return(invisible(TRUE))
+	}
+	if (is.character(limits) && length(limits) == 1L && !is.na(limits) &&
+			identical(limits, "shared")) {
+		return(invisible(TRUE))
+	}
+	stop("`fg_limits` is not supported when `fg_type = \"combination\"`.", call. = FALSE)
+}
+
 # Helper to resolve NULL/numeric/"shared" limits for one layer.
 .resolve_layer_limits <- function(limits, values, type, arg_name, layer_name, warn = TRUE) {
 	.validate_layer_limits(limits, arg_name)
@@ -633,8 +680,8 @@ plotOverlay <- function(
 	return(limits)
 }
 
-# Helper to resolve one bivariate foreground feature or colData column.
-.resolve_bivariate_feature <- function(sce, feature, assay) {
+# Helper to resolve one numeric foreground feature or colData column.
+.resolve_numeric_foreground_feature <- function(sce, feature, assay, type_label) {
 	.validate_string_arg(feature, "foreground")
 	if (feature %in% SummarizedExperiment::rownames(sce)) {
 		.validate_string_arg(assay, "fg_assay")
@@ -651,17 +698,109 @@ plotOverlay <- function(
 	if (feature %in% colnames(SummarizedExperiment::colData(sce))) {
 		values <- SummarizedExperiment::colData(sce)[[feature]]
 		if (!is.numeric(values)) {
-			stop("`fg_type = 'bivariate'` requires both foreground variables to be numeric.", call. = FALSE)
+			if (identical(type_label, "bivariate")) {
+				stop("`fg_type = 'bivariate'` requires both foreground variables to be numeric.", call. = FALSE)
+			}
+			stop("`fg_type = '", type_label, "'` requires foreground variables to be numeric.", call. = FALSE)
 		}
 		return(values)
 	}
 	stop(
-		"`foreground` entries for `fg_type = 'bivariate'` must be features in rownames(sce) ",
+		"`foreground` entries for `fg_type = '", type_label, "'` must be features in rownames(sce) ",
 		"or numeric columns in colData(sce). Unknown foreground: ",
 		feature,
 		".",
 		call. = FALSE
 	)
+}
+
+# Helper to resolve one bivariate foreground feature or colData column.
+.resolve_bivariate_feature <- function(sce, feature, assay) {
+	return(.resolve_numeric_foreground_feature(sce, feature, assay, "bivariate"))
+}
+
+# Helper to validate and expand combination thresholds.
+.resolve_combination_thresholds <- function(threshold, features, values) {
+	if (is.character(threshold)) {
+		if (length(threshold) == 1L && !is.na(threshold) && identical(threshold, "median")) {
+			thresholds <- apply(values, 2L, stats::median, na.rm = TRUE)
+			thresholds <- as.numeric(thresholds)
+			names(thresholds) <- features
+			return(thresholds)
+		}
+		stop("`fg_threshold` must be numeric or \"median\" when `fg_type = \"combination\"`.", call. = FALSE)
+	}
+	if (!is.numeric(threshold) || anyNA(threshold) || any(!is.finite(threshold))) {
+		stop("`fg_threshold` must be numeric or \"median\" when `fg_type = \"combination\"`.", call. = FALSE)
+	}
+	if (!is.null(names(threshold)) && any(nzchar(names(threshold)))) {
+		if (!all(features %in% names(threshold))) {
+			stop("Named `fg_threshold` values must include all foreground variables.", call. = FALSE)
+		}
+		thresholds <- as.numeric(threshold[features])
+		names(thresholds) <- features
+		return(thresholds)
+	}
+	if (length(threshold) == 1L) {
+		thresholds <- rep(as.numeric(threshold), length(features))
+		names(thresholds) <- features
+		return(thresholds)
+	}
+	if (length(threshold) == length(features)) {
+		thresholds <- as.numeric(threshold)
+		names(thresholds) <- features
+		return(thresholds)
+	}
+	stop("`fg_threshold` must have length 1 or the same length as `foreground`.", call. = FALSE)
+}
+
+# Helper to generate all combination labels in deterministic binary order.
+.combination_levels <- function(features) {
+	k <- length(features)
+	grid <- expand.grid(rep(list(c(FALSE, TRUE)), k), KEEP.OUT.ATTRS = FALSE)
+	levels <- apply(grid, 1L, function(row) {
+		paste0(features, ifelse(row, "+", "-"), collapse = "/")
+	})
+	return(levels)
+}
+
+# Helper to construct expression-combination foreground labels.
+.prepare_combination_values <- function(sce,
+																			 features,
+																			 assay,
+																			 threshold = 0) {
+	if (!is.character(features) || anyNA(features) ||
+			length(features) < 2L || length(features) > 5L) {
+		stop("`fg_type = \"combination\"` supports between 2 and 5 foreground variables.", call. = FALSE)
+	}
+	values <- vapply(
+		features,
+		function(feature) .resolve_numeric_foreground_feature(sce, feature, assay, "combination"),
+		numeric(ncol(sce))
+	)
+	if (is.null(dim(values))) {
+		values <- matrix(values, ncol = length(features), dimnames = list(colnames(sce), features))
+	}
+	colnames(values) <- features
+	thresholds <- .resolve_combination_thresholds(threshold, features, values)
+	expressed <- sweep(values, 2L, thresholds, FUN = ">")
+	has_na <- rowSums(is.na(values)) > 0L
+	labels <- apply(expressed, 1L, function(row) {
+		paste0(features, ifelse(row, "+", "-"), collapse = "/")
+	})
+	labels[has_na] <- NA_character_
+	levels <- .combination_levels(features)
+	labels <- factor(labels, levels = levels)
+	return(list(
+		features = features,
+		values = values,
+		thresholds = thresholds,
+		expressed = expressed,
+		labels = labels,
+		type = "combination",
+		source = "combination",
+		label = features
+	))
 }
 
 # Helper to construct bivariate foreground colours from two numeric variables.
@@ -761,6 +900,7 @@ plotOverlay <- function(
 																					 fg_type,
 																					 bg_assay,
 																					 fg_assay,
+																					 fg_threshold,
 																					 subset_idx,
 																					 bg_limits,
 																					 fg_limits) {
@@ -777,6 +917,13 @@ plotOverlay <- function(
 			features = foreground,
 			assay = fg_assay,
 			limits = NULL
+		)
+	} else if (identical(fg_type, "combination")) {
+		fg <- .prepare_combination_values(
+			sce = sce,
+			features = foreground,
+			assay = fg_assay,
+			threshold = fg_threshold
 		)
 	} else {
 		fg <- .resolve_overlay_variable(
@@ -799,6 +946,8 @@ plotOverlay <- function(
 		fg$values
 	} else if (identical(fg$type, "bivariate")) {
 		NULL
+	} else if (identical(fg$type, "combination")) {
+		NULL
 	} else {
 		fg$values[subset_idx]
 	}
@@ -815,6 +964,9 @@ plotOverlay <- function(
 		} else {
 			.validate_bivariate_fg_limits(fg_limits)
 		}
+	} else if (identical(fg$type, "combination")) {
+		.validate_combination_fg_limits(fg_limits)
+		resolved_fg_limits <- NULL
 	} else {
 		resolved_fg_limits <- .resolve_layer_limits(
 			limits = fg_limits,
@@ -832,6 +984,8 @@ plotOverlay <- function(
 	fg_values <- NULL
 	if (identical(fg$type, "categorical")) {
 		fg_values <- .resolve_categorical_values(NULL, fg$values[subset_idx])
+	} else if (identical(fg$type, "combination")) {
+		fg_values <- levels(fg$labels)
 	}
 
 	return(list(
