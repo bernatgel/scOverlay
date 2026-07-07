@@ -38,6 +38,21 @@ test_that("getPalette resolves named scOverlay palettes by type", {
   expect_type(pal_soft, "character")
   expect_length(pal_soft, 10)
   expect_valid_colours(pal_soft)
+
+  pal_combination_15 <- getPalette("combinationBright", type = "categorical", n = 15)
+  expect_type(pal_combination_15, "character")
+  expect_length(pal_combination_15, 15)
+  expect_equal(pal_combination_15[[1]], "#D9D9D9")
+  expect_true(all(grepl("^#", pal_combination_15)))
+  expect_valid_colours(pal_combination_15)
+
+  pal_combination_32 <- getPalette("combinationBright", type = "categorical", n = 32)
+  expect_length(pal_combination_32, 32)
+  expect_equal(pal_combination_32[[1]], "#D9D9D9")
+  expect_equal(pal_combination_32[[2]], "#ff4346")
+  expect_equal(pal_combination_32[[3]], "#55b2ff")
+  expect_equal(pal_combination_32[[4]], "#68d865")
+  expect_valid_colours(pal_combination_32)
 })
 
 test_that("getPalette interpolates user-supplied continuous color vectors", {
@@ -173,6 +188,8 @@ test_that("listPalettes returns palette metadata", {
   categorical <- listPalettes(type = "categorical")
   expect_true(all(categorical$type == "categorical"))
   expect_true("soft" %in% categorical$name)
+  expect_true("combinationBright" %in% categorical$name)
+  expect_equal(categorical$n_colours[categorical$name == "combinationBright"], 32L)
   expect_true(categorical$is_default[categorical$name == "scOverlay"])
   expect_true(all(!categorical$is_default[categorical$name != "scOverlay"]))
 

@@ -1720,6 +1720,63 @@ test_that("combination helper returns deterministic labels and strict thresholds
   expect_true(is.na(res$labels[4]))
 })
 
+test_that("combination foreground uses mode-specific palette and legend titles", {
+  sce <- make_na_foreground_sce()
+  SummarizedExperiment::colData(sce)$Gene1 <- c(0, 1, 0, 1, 2)
+  SummarizedExperiment::colData(sce)$Gene2 <- c(0, 0, 1, 1, 2)
+  SummarizedExperiment::colData(sce)$Gene3 <- c(0, 1, 1, 0, 2)
+
+  p_default <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("Gene1", "Gene2"),
+    fg_type = "combination"
+  )
+  default_scale <- p_default$scales$scales[[1]]
+  expected_levels <- c(
+    "Gene1-/Gene2-",
+    "Gene1+/Gene2-",
+    "Gene1-/Gene2+",
+    "Gene1+/Gene2+"
+  )
+  expected_cols <- getPalette(
+    "combinationBright",
+    type = "categorical",
+    n = length(expected_levels),
+    values = expected_levels
+  )
+  expect_equal(default_scale$name, "Gene1 / Gene2")
+  expect_equal(default_scale$limits, expected_levels)
+  expect_equal(default_scale$map(expected_levels), unname(expected_cols))
+
+  override_palette <- c(
+    "Gene1-/Gene2-" = "grey80",
+    "Gene1+/Gene2-" = "red",
+    "Gene1-/Gene2+" = "blue",
+    "Gene1+/Gene2+" = "purple"
+  )
+  p_override <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("Gene1", "Gene2"),
+    fg_type = "combination",
+    fg_palette = override_palette
+  )
+  override_scale <- p_override$scales$scales[[1]]
+  expect_equal(override_scale$map(expected_levels), unname(override_palette[expected_levels]))
+
+  p_three <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("Gene1", "Gene2", "Gene3"),
+    fg_type = "combination"
+  )
+  expect_equal(p_three$scales$scales[[1]]$name, "Gene combination")
+})
+
 test_that("plotOverlay validates key inputs", {
   sce <- get_example_sce()
 

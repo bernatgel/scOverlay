@@ -140,9 +140,11 @@ solid foreground colour. For variable foregrounds, it can be \code{NULL}, a
 palette name, a vector of colours or a palette function, and the value is
 passed to \code{\link{getPalette}}. For continuous foregrounds, colour vectors
 are interpreted as gradient anchors and interpolated internally. For
-bivariate foregrounds, \code{NULL} uses \code{"orange_blue"}. Defaults to
-\code{NULL}, which uses \code{"gray_red"} for continuous foregrounds and
-\code{"scOverlay"} for categorical foregrounds.}
+bivariate foregrounds, \code{NULL} uses \code{"orange_blue"}. For combination
+foregrounds, \code{NULL} uses \code{"combinationBright"}; user-supplied
+palettes still override this default. Defaults to \code{NULL}, which uses
+\code{"gray_red"} for continuous foregrounds and \code{"scOverlay"} for
+ordinary categorical foregrounds.}
 
 \item{bg_raster}{Logical value. If \code{TRUE}, rasterize the background point
 layer using \code{ggrastr::geom_point_rast()}. Defaults to \code{FALSE}.}
@@ -187,7 +189,9 @@ legend. It is ignored when \code{foreground = "solid"} or
 legend. If \code{NULL}, \code{background} is used. Defaults to \code{NULL}.}
 
 \item{fg_legend_title}{Character value with the title of the foreground
-legend. If \code{NULL}, \code{foreground} is used. Defaults to \code{NULL}.}
+legend. If \code{NULL}, \code{foreground} is used. For combination plots, two
+foreground variables are joined with \code{" / "}, while larger combinations
+use \code{"Gene combination"}. Defaults to \code{NULL}.}
 
 \item{title}{Character value with the plot title. If \code{NULL},
 \code{foreground} is used, except when \code{foreground = "none"}, where an

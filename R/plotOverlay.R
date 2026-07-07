@@ -142,9 +142,11 @@
 #' palette name, a vector of colours or a palette function, and the value is
 #' passed to \code{\link{getPalette}}. For continuous foregrounds, colour vectors
 #' are interpreted as gradient anchors and interpolated internally. For
-#' bivariate foregrounds, \code{NULL} uses \code{"orange_blue"}. Defaults to
-#' \code{NULL}, which uses \code{"gray_red"} for continuous foregrounds and
-#' \code{"scOverlay"} for categorical foregrounds.
+#' bivariate foregrounds, \code{NULL} uses \code{"orange_blue"}. For combination
+#' foregrounds, \code{NULL} uses \code{"combinationBright"}; user-supplied
+#' palettes still override this default. Defaults to \code{NULL}, which uses
+#' \code{"gray_red"} for continuous foregrounds and \code{"scOverlay"} for
+#' ordinary categorical foregrounds.
 #'
 #' @param bg_raster Logical value. If \code{TRUE}, rasterize the background point
 #' layer using \code{ggrastr::geom_point_rast()}. Defaults to \code{FALSE}.
@@ -189,7 +191,9 @@
 #' legend. If \code{NULL}, \code{background} is used. Defaults to \code{NULL}.
 #'
 #' @param fg_legend_title Character value with the title of the foreground
-#' legend. If \code{NULL}, \code{foreground} is used. Defaults to \code{NULL}.
+#' legend. If \code{NULL}, \code{foreground} is used. For combination plots, two
+#' foreground variables are joined with \code{" / "}, while larger combinations
+#' use \code{"Gene combination"}. Defaults to \code{NULL}.
 #'
 #' @param title Character value with the plot title. If \code{NULL},
 #' \code{foreground} is used, except when \code{foreground = "none"}, where an
@@ -519,7 +523,7 @@ plotOverlay <- function(
 			fg_values <- .resolve_categorical_values(fg_values, coords_fg$foreground)
 			n_fg <- max(1L, length(fg_values))
 			pal_fg <- getPalette(
-			fg_palette,
+			.resolve_fg_palette(fg_palette, fg$type),
 			type = "categorical",
 			n = n_fg,
 			values = fg_values
@@ -534,7 +538,7 @@ plotOverlay <- function(
 				na.rm = TRUE
 			) +
 			scale_colour_manual(
-				name = fg_legend_title %||% foreground,
+				name = fg_legend_title %||% .foreground_legend_title(foreground, fg$type),
 				values = pal_fg,
 				limits = fg_values,
 				guide = if (fg_legend) "legend" else "none"
@@ -626,6 +630,25 @@ plotOverlay <- function(
 
 .new_bivariate_limits <- function(x, y) {
 	structure(list(x = x, y = y), class = "scOverlay_bivariate_limits")
+}
+
+# Helper to choose mode-specific foreground palette defaults.
+.resolve_fg_palette <- function(fg_palette, fg_type) {
+	if (is.null(fg_palette) && identical(fg_type, "combination")) {
+		return("combinationBright")
+	}
+	return(fg_palette)
+}
+
+# Helper to choose default foreground legend titles.
+.foreground_legend_title <- function(foreground, fg_type) {
+	if (identical(fg_type, "combination")) {
+		if (length(foreground) == 2L) {
+			return(paste(foreground, collapse = " / "))
+		}
+		return("Gene combination")
+	}
+	return(foreground)
 }
 
 # Helper to validate combination foreground limits.
