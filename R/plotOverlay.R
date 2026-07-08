@@ -111,14 +111,18 @@
 #' not expressed. Defaults to \code{0}.
 #'
 #' @param fg_order A character value controlling the drawing order of foreground
-#' cells. Accepted values are \code{"input"}, \code{"random"},
-#' \code{"ascending"} and \code{"descending"}. \code{"input"} keeps the current
+#' cells. Accepted values are \code{"auto"}, \code{"input"}, \code{"random"},
+#' \code{"ascending"} and \code{"descending"}. \code{"auto"} uses
+#' \code{"ascending"} for bivariate and combination foregrounds and
+#' \code{"input"} for other foreground types. \code{"input"} keeps the current
 #' order, \code{"random"} randomly shuffles foreground cells,
 #' \code{"ascending"} draws lower foreground values first and higher values on
-#' top, and \code{"descending"} does the opposite. \code{"ascending"} is useful
-#' for expression plots because cells with higher expression are drawn last. For
+#' top, and \code{"descending"} does the opposite. For bivariate foregrounds,
+#' ascending and descending order by the sum of the two scaled foreground
+#' values. For combination foregrounds, ascending and descending order by the
+#' deterministic combination level, from all-negative to all-positive. For
 #' reproducible random ordering, call \code{set.seed()} before
-#' \code{plotOverlay()}. Defaults to \code{"input"}.
+#' \code{plotOverlay()}. Defaults to \code{"auto"}.
 #'
 #' @param bg_point_size Numeric value with the point size of the background
 #' layer. Defaults to \code{4}.
@@ -312,7 +316,7 @@ plotOverlay <- function(
 		bg_assay = "logcounts",        
 		fg_assay = "logcounts",        
 		fg_threshold = 0,
-		fg_order = c("input", "random", "ascending", "descending"),
+		fg_order = c("auto", "input", "random", "ascending", "descending"),
 		bg_point_size = 4,
 		fg_point_size = 1,
 		bg_palette = NULL,
@@ -411,9 +415,13 @@ plotOverlay <- function(
 		if (identical(fg$type, "bivariate")) {
 			coords$.fg_x <- fg$values_x
 			coords$.fg_y <- fg$values_y
+			coords$.fg_order_score <- fg$scaled_x + fg$scaled_y
 			coords$.fg_colour <- fg$colours
+		} else if (identical(fg$type, "combination")) {
+			coords$.fg_order_score <- match(fg$labels, levels(fg$labels))
 		}
 		fg_type <- fg$type
+		fg_order <- .resolve_fg_order(fg_order, fg$type)
 		
 	if (identical(fg$type, "none")) {
 		coords_fg <- coords[0, , drop = FALSE]
@@ -423,8 +431,12 @@ plotOverlay <- function(
 		if (identical(fg$type, "bivariate")) {
 			coords$foreground[!idx] <- NA_character_
 			coords$.fg_colour[!idx] <- NA_character_
+			coords$.fg_order_score[!idx] <- NA_real_
 		} else {
 			coords$foreground[!idx] <- NA
+			if (".fg_order_score" %in% colnames(coords)) {
+				coords$.fg_order_score[!idx] <- NA_real_
+			}
 		}
 
 		# Create filtered coords for foreground layer (only subset cells with non-NA foreground)
@@ -804,6 +816,17 @@ plotBivariateLegend <- function(features,
 		)
 	}
 	return(invisible(FALSE))
+}
+
+# Helper to resolve automatic foreground ordering.
+.resolve_fg_order <- function(fg_order, fg_type) {
+	if (!identical(fg_order, "auto")) {
+		return(fg_order)
+	}
+	if (fg_type %in% c("bivariate", "combination")) {
+		return("ascending")
+	}
+	return("input")
 }
 
 # Helper to choose default foreground legend titles.
@@ -1475,7 +1498,11 @@ plotBivariateLegend <- function(features,
 		return(coords_fg[idx, , drop = FALSE])
 	}
 
-	foreground <- coords_fg$foreground
+	foreground <- if (".fg_order_score" %in% colnames(coords_fg)) {
+		coords_fg$.fg_order_score
+	} else {
+		coords_fg$foreground
+	}
 
 	if (identical(fg_order, "ascending")) {
 		idx <- order(foreground, na.last = FALSE)

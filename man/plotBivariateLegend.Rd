@@ -39,7 +39,7 @@ p <- plotOverlay(
     fg_type = "bivariate"
 )
 
-leg <- plotBivariateLegend(c("SOX10", "MKI67"))
+leg <- plotBivariateLegend(c("Gene1", "Gene2"))
 leg
 
 patchwork::wrap_plots(

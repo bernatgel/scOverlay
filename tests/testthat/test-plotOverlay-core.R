@@ -277,6 +277,34 @@ test_that(".order_foreground orders factors by factor levels", {
   )
 })
 
+test_that("fg_order auto resolves by foreground type", {
+  expect_identical(scOverlay:::.resolve_fg_order("auto", "bivariate"), "ascending")
+  expect_identical(scOverlay:::.resolve_fg_order("auto", "combination"), "ascending")
+  expect_identical(scOverlay:::.resolve_fg_order("auto", "continuous"), "input")
+  expect_identical(scOverlay:::.resolve_fg_order("input", "bivariate"), "input")
+})
+
+test_that(".order_foreground can use explicit foreground order scores", {
+  coords_fg <- data.frame(
+    id = seq_len(4),
+    foreground = c("d", "a", "b", "c"),
+    .fg_order_score = c(4, 1, 3, 2)
+  )
+
+  expect_identical(
+    scOverlay:::.order_foreground(coords_fg, "ascending")$id,
+    c(2L, 4L, 3L, 1L)
+  )
+  expect_identical(
+    scOverlay:::.order_foreground(coords_fg, "descending")$id,
+    c(1L, 3L, 4L, 2L)
+  )
+  expect_identical(
+    scOverlay:::.order_foreground(coords_fg, "input")$id,
+    seq_len(4)
+  )
+})
+
 test_that("bg_dimming controls white dimming layer opacity", {
   sce <- get_example_sce()
 
@@ -1275,6 +1303,118 @@ test_that("fg_order works through plotOverlay", {
     fg_order = "random"
   )
   expect_s3_class(p_random, "ggplot")
+})
+
+test_that("fg_order auto preserves input order for ordinary foregrounds", {
+  sce <- make_na_foreground_sce()
+  SummarizedExperiment::colData(sce)$auto_score <- c(NA_real_, 2, 0, 1, NA_real_)
+
+  p_auto <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = "auto_score",
+    fg_type = "continuous",
+    fg_order = "auto"
+  )
+  auto_foreground <- get_foreground_layer_data(p_auto)
+
+  p_input <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = "auto_score",
+    fg_type = "continuous",
+    fg_order = "input"
+  )
+  input_foreground <- get_foreground_layer_data(p_input)
+
+  expect_equal(auto_foreground$X, input_foreground$X)
+  expect_equal(auto_foreground$foreground, c(2, 0, 1))
+})
+
+test_that("fg_order auto uses scaled summed bivariate signal", {
+  sce <- make_na_foreground_sce()
+  SummarizedExperiment::colData(sce)$Gene1 <- c(0, 10, 5, NA, 2)
+  SummarizedExperiment::colData(sce)$Gene2 <- c(0, 0, 1, 1, 10)
+
+  p_auto <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("Gene1", "Gene2"),
+    fg_type = "bivariate",
+    fg_order = "auto"
+  )
+  auto_foreground <- get_foreground_layer_data(p_auto)
+  expect_equal(auto_foreground$X, c(0, 2, 1, 4))
+  expect_equal(auto_foreground$.fg_order_score, c(0, 0.6, 1, 1.2))
+
+  p_ascending <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("Gene1", "Gene2"),
+    fg_type = "bivariate",
+    fg_order = "ascending"
+  )
+  ascending_foreground <- get_foreground_layer_data(p_ascending)
+  expect_equal(auto_foreground$X, ascending_foreground$X)
+
+  p_input <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("Gene1", "Gene2"),
+    fg_type = "bivariate",
+    fg_order = "input"
+  )
+  input_foreground <- get_foreground_layer_data(p_input)
+  expect_equal(input_foreground$X, c(0, 1, 2, 4))
+})
+
+test_that("fg_order auto uses deterministic combination level order", {
+  sce <- make_na_foreground_sce()
+  SummarizedExperiment::colData(sce)$Gene1 <- c(2, 0, 1, NA, 0)
+  SummarizedExperiment::colData(sce)$Gene2 <- c(2, 1, 0, 1, 0)
+
+  p_auto <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("Gene1", "Gene2"),
+    fg_type = "combination",
+    fg_order = "auto"
+  )
+  auto_foreground <- get_foreground_layer_data(p_auto)
+  expect_equal(auto_foreground$X, c(4, 2, 1, 0))
+  expect_equal(
+    as.character(auto_foreground$foreground),
+    c("Gene1-/Gene2-", "Gene1+/Gene2-", "Gene1-/Gene2+", "Gene1+/Gene2+")
+  )
+  expect_equal(auto_foreground$.fg_order_score, c(1, 2, 3, 4))
+
+  p_ascending <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("Gene1", "Gene2"),
+    fg_type = "combination",
+    fg_order = "ascending"
+  )
+  ascending_foreground <- get_foreground_layer_data(p_ascending)
+  expect_equal(auto_foreground$X, ascending_foreground$X)
+
+  p_input <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("Gene1", "Gene2"),
+    fg_type = "combination",
+    fg_order = "input"
+  )
+  input_foreground <- get_foreground_layer_data(p_input)
+  expect_equal(input_foreground$X, c(0, 1, 2, 4))
 })
 
 test_that("NA foreground values are dropped from the foreground layer", {

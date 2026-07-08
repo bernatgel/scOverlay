@@ -116,9 +116,14 @@
 #' values are not expressed. Defaults to \code{0}.
 #'
 #' @param fg_order A character value controlling the drawing order of foreground
-#' cells within each panel. Accepted values are \code{"input"},
-#' \code{"random"}, \code{"ascending"} and \code{"descending"}. See
-#' \code{\link{plotOverlay}} for details. Defaults to \code{"input"}.
+#' cells within each panel. Accepted values are \code{"auto"}, \code{"input"},
+#' \code{"random"}, \code{"ascending"} and \code{"descending"}.
+#' \code{"auto"} uses \code{"ascending"} for bivariate and combination
+#' foregrounds and \code{"input"} for other foreground types. For bivariate
+#' foregrounds, ascending and descending order by the sum of the two scaled
+#' foreground values. For combination foregrounds, ascending and descending
+#' order by deterministic combination level, from all-negative to all-positive.
+#' See \code{\link{plotOverlay}} for details. Defaults to \code{"auto"}.
 #'
 #' @param bg_point_size Numeric value with the point size of the background
 #' layer in each panel. Defaults to \code{2}.
@@ -283,7 +288,7 @@ plotOverlayPerGroup <- function(
 			fg_assay = "logcounts",
 			fg_type = c("auto","continuous","categorical","bivariate","combination"),
 			fg_threshold = 0,
-		fg_order = c("input", "random", "ascending", "descending"),
+		fg_order = c("auto", "input", "random", "ascending", "descending"),
 		bg_point_size = 2,
 		fg_point_size = 0.5,
 		bg_palette = NULL,

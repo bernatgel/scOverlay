@@ -41,7 +41,7 @@ A key additional feature of `scOverlay` is that subsetting can be applied to the
 
 `scOverlay` can also represent multiple foreground features using bivariate blend plots and expression-combination plots.
 
-`scOverlay` works with `SingleCellExperiment` objects and only need the object to contain at least one reduced dimension representation, such as `"TSNE"` or `"UMAP"`, and the variables to be plotted either in the assays or in `colData`.
+`scOverlay` works with `SingleCellExperiment` objects and only needs the object to contain at least one reduced dimension representation, such as `"TSNE"` or `"UMAP"`, and the variables to be plotted either in the assays or in `colData`.
 
 The package is focused on visualizing already processed single-cell data and not intended to perform single-cell preprocessing, normalization or dimensionality reduction, which can be done with many Bioconductor packages for single-cell data processing.
 
@@ -83,7 +83,7 @@ sce_mpnst_example
 ```
 
 
-The simplest `scOverlay` plot shows all cells in the background and overlays a foreground variable on top. In this first example, the background shows the sample type annotation (tumor type in this example) and the foreground shows the expression of `CDH19`. In this case we also adjust the size of the background points so they are clearly
+The simplest `scOverlay` plot shows all cells in the background and overlays a foreground variable on top. In this first example, the background shows the sample type annotation (tumor type in this example) and the foreground shows the expression of `CDH19`.
 
 ```{r quick-start-1}
 plotOverlay(
@@ -153,7 +153,7 @@ assayNames(sce_mpnst_example)
 colnames(colData(sce_mpnst_example))
 ```
 
-The reduced dimensions define the coordinates used for plotting. In this vignette we will use mainly use `"TSNE"` as the default reduced dimension, but `"UMAP"` is also included and can be plotted in the exact same way.
+The reduced dimensions define the coordinates used for plotting. In this vignette we will mainly use `"TSNE"` as the default reduced dimension, but `"UMAP"` is also included and can be plotted in the exact same way.
 
 The assay names indicate where gene expression values are stored. The examples below assume that the object contains a `"logcounts"` assay, which is the default assay used by `plotOverlay()` when the foreground is a gene.
 
@@ -171,7 +171,7 @@ c("SOX10", "S100B", "CDH19", "MKI67") %in% rownames(sce_mpnst_example)
 
 The main idea behind `scOverlay` is to separate the information used as context from the information we want to highlight. The background layer shows the complete embedding. The foreground layer is drawn on top and can represent a gene, a cell metadata column, a score, etc in the whole dataset or a subset of cells.
 
-As seen in the "Quick Start" section, a first example could be to plot the expression of a gene over the sample type annotation, in this case telling us from which tumor type come each cell.
+As seen in the "Quick Start" section, a first example could be to plot the expression of a gene over the sample type annotation, in this case telling us from which tumor type each cell comes from.
 
 ```{r overlay-model-gene, eval=FALSE}
 plotOverlay(
@@ -182,7 +182,7 @@ plotOverlay(
 )
 ```
 
-However, the foreground does not have to be a gene. It can also be a column in `colData(sce)`. for example the clusters, samples, cell types, doublet scores, etc... The background can use the same data sources, or a solid colour.
+However, the foreground does not have to be a gene. It can also be a column in `colData(sce)`, for example the clusters, samples, cell types, doublet scores, etc... The background can use the same data sources, or a solid colour.
 
 The foreground can also be restricted to a specific subset of cells. This makes it possible to ask questions such as where the cells from a particular sample type are located in the dimensionality reduction embedding, while still seeing the complete structure of the data in the background.
 
@@ -503,7 +503,7 @@ A graphical preview can be generated with `plotPalettes()`.
 plotPalettes(n = 9)
 ```
 
-Palettes are selected by name with `bg_palette` or `fg_palette`. Continuous palettes are stored internally as anchor colours and interpolated to the number of colours needed for the plot. This also means that user-defined continuous palettes can be provided as a small vector of colours that will be automatically interpolated. All  palettes from CRANpkg("ViridisLite") and CRANpkg("RColorBrewer") are also available.
+Palettes are selected by name with `bg_palette` or `fg_palette`. Continuous palettes are stored internally as anchor colours and interpolated to the number of colours needed for the plot. This also means that user-defined continuous palettes can be provided as a small vector of colours that will be automatically interpolated. All palettes from CRANpkg("viridisLite") and CRANpkg("RColorBrewer") are also available.
 
 Here are a few plots with different palettes.
 
