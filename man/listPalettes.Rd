@@ -40,7 +40,10 @@ listPalettes()
 listPalettes(type = "bivariate")
 
 pal_info <- listPalettes(type = "bivariate")
-pal_info$colours[[pal_info$name == "bivariateBright"]]
+pal_info$colours[[which(pal_info$name == "bivariateBright")]]
+
+pal_info <- listPalettes(type = "continuous")
+pal_info$colours[[which(pal_info$name == "gray_blue")]]
 
 }
 \seealso{

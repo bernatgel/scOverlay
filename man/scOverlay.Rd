@@ -2,10 +2,19 @@
 % Please edit documentation in R/zzz.R
 \name{scOverlay}
 \alias{scOverlay}
-\title{scOverlay: Dual-scale overlay plots for single-cell embeddings}
+\title{scOverlay: layered overlays for single-cell embeddings}
 \description{
-scOverlay provides functions to overlay gene expression or metadata values
-on top of contextual embeddings (clusters, samples, cell types) with
-independent colour scales.
+scOverlay creates layered overlay plots for reduced-dimension embeddings
+stored in \linkS4class{SingleCellExperiment} objects. It combines background
+and foreground layers to show gene expression, assay-derived features and
+\code{colData} metadata with independent colour scales.
+}
+\details{
+The package includes helpers for single plots, grouped plots and nested
+grouped plots; bivariate colour blends for two numeric foreground variables;
+expression-combination plots for small sets of genes or numeric metadata; and
+palette listing and preview utilities. Background and foreground point layers
+can be rasterized independently for dense single-cell plots while keeping
+labels, axes and legends as vector graphics.
 }
 \keyword{internal}

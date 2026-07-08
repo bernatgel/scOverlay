@@ -85,6 +85,8 @@ getPalette(
     values = c("A", "B", "C")
 )
 
+getPalette("combinationBright", type = "categorical", n = 8)
+
 getPalette(
     palette = c(A = "red", B = "blue"),
     type = "categorical",

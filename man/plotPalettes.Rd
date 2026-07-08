@@ -44,6 +44,7 @@ definitions.
 }
 \examples{
 plotPalettes()
+plotPalettes(type = "continuous")
 plotPalettes(type = "bivariate")
 
 }

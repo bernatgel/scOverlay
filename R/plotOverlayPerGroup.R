@@ -50,12 +50,11 @@
 #' this column defines one panel. This argument has no default and must be
 #' provided by the user.
 #'
-#' @param foreground A single character value specifying the variable to draw in
-#' the foreground layer. It can be \code{"solid"} to draw selected foreground
-#' cells with a fixed colour, \code{"none"} to draw no visible foreground
-#' points, a feature in \code{rownames(sce)}, in which case values are taken
-#' from \code{fg_assay}, or a column in \code{colData(sce)}. This argument has
-#' no default and must be provided by the user.
+#' @param foreground Foreground layer specification. It can be a feature name in
+#' \code{rownames(sce)}, a \code{colData(sce)} column, \code{"solid"},
+#' \code{"none"}, or a character vector of feature or column names for
+#' \code{fg_type = "bivariate"} or \code{fg_type = "combination"}. This
+#' argument has no default and must be provided by the user.
 #'
 #' @param background A single character value specifying the background layer
 #' passed to \code{\link{plotOverlay}}. It can be \code{"solid"} to draw all
@@ -99,10 +98,12 @@
 #'
 #' @param fg_type A character value indicating how the foreground variable should
 #' be represented when \code{foreground} is not \code{"solid"} or
-#' \code{"none"}. Accepted values are \code{"auto"}, \code{"continuous"} and
+#' \code{"none"}. Accepted values are \code{"auto"}, \code{"continuous"},
 #' \code{"categorical"}, \code{"bivariate"} and \code{"combination"}. With
 #' \code{"auto"}, feature values are treated as continuous and \code{colData}
 #' variables are treated as continuous only when they are numeric.
+#' \code{"bivariate"} blends colours from exactly two numeric foreground
+#' variables.
 #' \code{"combination"} calls 2 to 5 numeric foreground variables expressed
 #' using \code{fg_threshold} and treats the resulting combinations as
 #' categorical values. Defaults to \code{"auto"}.
@@ -244,6 +245,28 @@
 #'     background = "solid"
 #' )
 #' p3
+#'
+#' # Compare expression across samples with shared foreground limits and a
+#' # collected legend.
+#' p4 <- plotOverlayPerGroup(
+#'     sce = sce_overlay_example,
+#'     group_col = "sample",
+#'     foreground = "Gene1",
+#'     background = "cluster",
+#'     fg_limits = "shared",
+#'     shared_legend = TRUE
+#' )
+#' p4
+#'
+#' # Use shared bivariate scaling across sample panels.
+#' p5 <- plotOverlayPerGroup(
+#'     sce = sce_overlay_example,
+#'     group_col = "sample",
+#'     foreground = c("Gene1", "Gene2"),
+#'     fg_type = "bivariate",
+#'     fg_limits = "shared"
+#' )
+#' p5
 #'
 #' @export
 

@@ -1,8 +1,9 @@
 #' Small example SingleCellExperiment for scOverlay
 #'
 #' A small \linkS4class{SingleCellExperiment} object used in scOverlay examples
-#' and tests. It contains a reduced sintetic set of cells, genes, cell annotations and
-#' reduced dimensions to demonstrate the basic plotting functions quickly.
+#' and tests. It contains a small synthetic set of cells, genes, cell
+#' annotations and reduced dimensions to demonstrate the plotting functions
+#' quickly.
 #' It includes \code{logcounts}, \code{TSNE} and \code{UMAP} reduced dimensions,
 #' and cell metadata such as \code{sample}, \code{sample_type} and
 #' \code{cluster}.

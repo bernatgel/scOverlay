@@ -265,6 +265,40 @@
 #' )
 #' p4
 #'
+#' # Blend two numeric foreground features with a bivariate palette.
+#' p5 <- plotOverlay(
+#'     sce_overlay_example,
+#'     foreground = c("Gene1", "Gene2"),
+#'     fg_type = "bivariate",
+#'     fg_palette = "bivariateBright"
+#' )
+#' p5
+#'
+#' # Create a separate bivariate legend.
+#' leg <- plotBivariateLegend(
+#'     features = c("Gene1", "Gene2"),
+#'     palette = "bivariateBright"
+#' )
+#' leg
+#'
+#' # Call expression combinations from two numeric foreground features.
+#' p6 <- plotOverlay(
+#'     sce_overlay_example,
+#'     foreground = c("Gene1", "Gene2"),
+#'     fg_type = "combination",
+#'     fg_threshold = 0
+#' )
+#' p6
+#'
+#' # Highlight a subset with a solid foreground colour.
+#' p7 <- plotOverlay(
+#'     sce_overlay_example,
+#'     foreground = "solid",
+#'     background = "cluster",
+#'     fg_subset_cells = quote(cluster == "C1")
+#' )
+#' p7
+#'
 #' @export
 
 plotOverlay <- function(
@@ -605,8 +639,34 @@ plotOverlay <- function(
 #' @return A \pkg{ggplot2} object containing the bivariate colour grid.
 #'
 #' @examples
+#' data("sce_overlay_example")
+#'
+#' p <- plotOverlay(
+#'     sce_overlay_example,
+#'     foreground = c("Gene1", "Gene2"),
+#'     fg_type = "bivariate"
+#' )
+#'
 #' leg <- plotBivariateLegend(c("SOX10", "MKI67"))
 #' leg
+#'
+#' patchwork::wrap_plots(
+#'     p,
+#'     plotBivariateLegend(features = c("Gene1", "Gene2")),
+#'     widths = c(1, 0.2)
+#' )
+#'
+#' custom_pal <- c(
+#'     low_xy = "#e6e6e6",
+#'     high_x = "#ff4346",
+#'     high_y = "#55b2ff",
+#'     high_xy = "#7a1fa2"
+#' )
+#'
+#' plotBivariateLegend(
+#'     features = c("Gene1", "Gene2"),
+#'     palette = custom_pal
+#' )
 #'
 #' @export
 
