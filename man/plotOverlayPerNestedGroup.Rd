@@ -149,10 +149,13 @@ colour can be used to set the solid foreground colour. It is ignored when
 a palette name, a vector of colours or a palette function. The value is
 passed to \code{\link{getPalette}}. For continuous foregrounds, colour
 vectors are interpreted as gradient anchors and interpolated internally.
-For combination foregrounds, \code{NULL} uses \code{"combinationBright"};
-user-supplied palettes still override this default. Defaults to \code{NULL},
-which uses \code{"gray_red"} for continuous foregrounds and \code{"scOverlay"}
-for ordinary categorical foregrounds.}
+For bivariate foregrounds, \code{NULL} uses \code{"bivariateBright"} and
+users can provide a built-in bivariate palette name or a four-colour vector
+with corners named \code{low_xy}, \code{high_x}, \code{high_y} and
+\code{high_xy}. For combination foregrounds, \code{NULL} uses
+\code{"combinationBright"}; user-supplied palettes still override this
+default. Defaults to \code{NULL}, which uses \code{"gray_red"} for continuous
+foregrounds and \code{"scOverlay"} for ordinary categorical foregrounds.}
 
 \item{bg_raster}{Logical value. If \code{TRUE}, rasterize the background point
 layer in each panel using \code{ggrastr::geom_point_rast()}. Defaults to
@@ -190,7 +193,9 @@ to \code{TRUE}.}
 
 \item{fg_legend}{Logical value indicating whether to show the foreground
 legend in each panel. It is ignored when \code{foreground = "solid"}. Defaults
-to \code{TRUE}.}
+to \code{TRUE}. Bivariate foregrounds do not use a normal ggplot foreground
+legend; use \code{\link{plotBivariateLegend}} to create a separate bivariate
+legend.}
 
 \item{bg_legend_title}{Character value with the title of the background
 legend. If \code{NULL}, \code{background} is used. Defaults to \code{NULL}.}

@@ -4,65 +4,46 @@
 \alias{listPalettes}
 \title{List available scOverlay palettes}
 \usage{
-listPalettes(
-  type = c("all", "categorical", "continuous"),
-  plot = FALSE,
-  n = 24,
-  show_names = TRUE
-)
+listPalettes(type = c("all", "categorical", "continuous", "bivariate"))
 }
 \arguments{
 \item{type}{Character value indicating which palettes to list. Accepted
-values are \code{"all"}, \code{"categorical"} and \code{"continuous"}. Defaults
-to \code{"all"}.}
-
-\item{plot}{Logical value. If \code{FALSE}, return a data frame with palette
-metadata. If \code{TRUE}, return a \pkg{ggplot2} swatch preview. Defaults to
-\code{FALSE}.}
-
-\item{n}{Number of colours used to display continuous palettes, and the
-maximum number of colours shown for categorical palettes when
-\code{plot = TRUE}. Non-integer values of \code{n} are truncated with
-\code{as.integer()}. Defaults to \code{24}.}
-
-\item{show_names}{Logical value. If \code{TRUE}, categorical palette previews
-show stored colour names when available, or position labels otherwise.
-Continuous palette previews do not show per-colour labels. Defaults to
-\code{TRUE}.}
+values are \code{"all"}, \code{"categorical"}, \code{"continuous"} and
+\code{"bivariate"}. Defaults to \code{"all"}.}
 }
 \value{
-If \code{plot = FALSE}, a \code{data.frame} with palette names, types,
-number of stored colours and a logical column indicating the default palettes.
-If \code{plot = TRUE}, a \pkg{ggplot2} object with a swatch preview.
+A \code{data.frame} with palette \code{name}, \code{type}, stored
+colour count \code{n}, a \code{colours} list-column containing stored palette
+definitions, and a logical \code{is_default} column indicating the default
+palettes.
 }
 \description{
-\code{listPalettes} lists the palettes bundled with scOverlay or returns a
-compact graphical preview of them.
+\code{listPalettes} returns metadata for the palettes bundled with scOverlay.
 }
 \details{
-The function can return either a small metadata table or a \pkg{ggplot2}
-swatch plot. Categorical palettes are shown as their stored colours. Continuous
-palettes are stored internally as anchor colours and are interpolated to
-\code{n} colours when \code{plot = TRUE}.
-
-When \code{plot = TRUE} and \code{show_names = TRUE}, categorical palette
-swatches show their stored names when names are present. Built-in categorical
-palettes intentionally keep integer-like names because these are useful for
-cluster labels.
+Categorical palettes return their stored colour vectors. Internally defined
+continuous palettes return their stored anchor colours. Externally generated
+continuous palettes, such as \pkg{viridisLite} palettes, return
+\code{n = NA_integer_} and \code{colours = NA} because scOverlay does not
+store a fixed colour vector for them. Bivariate palettes return their four
+named corner colours: \code{low_xy}, \code{high_x}, \code{high_y} and
+\code{high_xy}.
 
 The \code{is_default} column marks the palettes used by
 \code{\link{getPalette}} when \code{palette = NULL}: \code{"scOverlay"} for
-categorical palettes and \code{"gray_red"} for continuous palettes.
+categorical palettes, \code{"gray_red"} for continuous palettes and
+\code{"bivariateBright"} for bivariate foregrounds.
 }
 \examples{
 listPalettes()
 
-listPalettes(type = "continuous")
+listPalettes(type = "bivariate")
 
-p <- listPalettes(plot = TRUE, n = 16, show_names = TRUE)
-p
+pal_info <- listPalettes(type = "bivariate")
+pal_info$colours[[pal_info$name == "bivariateBright"]]
 
 }
 \seealso{
-\code{\link{getPalette}}, \code{\link{plotOverlay}}.
+\code{\link{getPalette}}, \code{\link{plotPalettes}},
+\code{\link{plotBivariateLegend}} and \code{\link{plotOverlay}}.
 }

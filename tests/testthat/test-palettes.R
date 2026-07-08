@@ -178,43 +178,76 @@ test_that("continuous palettes are unaffected by categorical name matching", {
 })
 
 test_that("listPalettes returns palette metadata", {
+  expected_bivariate <- c(
+    "bivariateBright",
+    "bivariateOrangeBlue",
+    "bivariatePinkGreen",
+    "bivariateRedCyan",
+    "bivariateGreenRed",
+    "bivariateBlueYellow"
+  )
+
   palettes <- listPalettes()
   expect_s3_class(palettes, "data.frame")
-  expect_true(all(c("name", "type", "n_colours", "is_default") %in% colnames(palettes)))
-  expect_true(all(c("categorical", "continuous") %in% palettes$type))
+  expect_true(all(c("name", "type", "n", "colours", "is_default") %in% colnames(palettes)))
+  expect_true(all(c("categorical", "continuous", "bivariate") %in% palettes$type))
   expect_false("discrete" %in% palettes$type)
   expect_false("default" %in% palettes$name)
+  expect_true(all(expected_bivariate %in% palettes$name))
+  expect_s3_class(palettes$colours, "AsIs")
 
   categorical <- listPalettes(type = "categorical")
   expect_true(all(categorical$type == "categorical"))
   expect_true("soft" %in% categorical$name)
   expect_true("combinationBright" %in% categorical$name)
-  expect_equal(categorical$n_colours[categorical$name == "combinationBright"], 32L)
+  combination_row <- which(categorical$name == "combinationBright")
+  expect_equal(categorical$n[combination_row], 32L)
+  expect_equal(length(categorical$colours[[combination_row]]), 32L)
   expect_true(categorical$is_default[categorical$name == "scOverlay"])
   expect_true(all(!categorical$is_default[categorical$name != "scOverlay"]))
 
   continuous <- listPalettes(type = "continuous")
   expect_true(all(continuous$type == "continuous"))
   expect_true("gray_red" %in% continuous$name)
+  gray_red_row <- which(continuous$name == "gray_red")
+  viridis_row <- which(continuous$name == "viridis")
+  expect_equal(continuous$n[gray_red_row], 5L)
+  expect_equal(length(continuous$colours[[gray_red_row]]), 5L)
+  expect_true("viridis" %in% continuous$name)
+  expect_true(is.na(continuous$n[viridis_row]))
+  expect_true(is.na(continuous$colours[[viridis_row]]))
   expect_true(continuous$is_default[continuous$name == "gray_red"])
   expect_true(all(!continuous$is_default[continuous$name != "gray_red"]))
 
-  expect_error(listPalettes(type = "discrete"), "'arg' should be one of")
+  bivariate <- listPalettes(type = "bivariate")
+  expect_true(all(bivariate$type == "bivariate"))
+  expect_true(all(expected_bivariate %in% bivariate$name))
+  expect_true(bivariate$is_default[bivariate$name == "bivariateBright"])
+  expect_true(all(!bivariate$is_default[bivariate$name != "bivariateBright"]))
+  expect_equal(bivariate$n, rep(4L, nrow(bivariate)))
+  bivariate_bright_row <- which(bivariate$name == "bivariateBright")
+  expect_named(
+    bivariate$colours[[bivariate_bright_row]],
+    c("low_xy", "high_x", "high_y", "high_xy")
+  )
+
+  expect_error(listPalettes(type = "discrete"), "`type` must be one of")
 })
 
-test_that("listPalettes can draw a ggplot swatch preview", {
-  p <- listPalettes(plot = TRUE, n = 16)
-  expect_s3_class(p, "ggplot")
+test_that("plotPalettes can draw palette previews", {
+  expect_error(listPalettes(plot = TRUE), "unused argument")
 
-  p_names <- listPalettes(plot = TRUE, n = 16, show_names = TRUE)
-  expect_s3_class(p_names, "ggplot")
+  p_bivariate <- plotPalettes(type = "bivariate")
+  expect_true(inherits(p_bivariate, "ggplot") || inherits(p_bivariate, "patchwork"))
 
-  p_no_names <- listPalettes(plot = TRUE, n = 16, show_names = FALSE)
-  expect_s3_class(p_no_names, "ggplot")
+  p_all <- plotPalettes(type = "all")
+  expect_true(inherits(p_all, "ggplot") || inherits(p_all, "patchwork"))
 
-  metadata <- listPalettes(plot = FALSE)
+  expect_error(plotPalettes(type = "discrete"), "`type` must be one of")
+
+  metadata <- listPalettes()
   expect_s3_class(metadata, "data.frame")
-  expect_named(metadata, c("name", "type", "n_colours", "is_default"))
+  expect_named(metadata, c("name", "type", "n", "colours", "is_default"))
 })
 
 test_that("plotOverlay works with default and named continuous foreground palettes", {

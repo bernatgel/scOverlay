@@ -2,10 +2,12 @@
 
 export(getPalette)
 export(listPalettes)
+export(plotBivariateLegend)
 export(plotGeneOverlay)
 export(plotOverlay)
 export(plotOverlayPerGroup)
 export(plotOverlayPerNestedGroup)
+export(plotPalettes)
 importFrom(SingleCellExperiment,colData)
 importFrom(SummarizedExperiment,rownames)
 importFrom(ggplot2,aes)

@@ -1498,13 +1498,53 @@ test_that("fg_type bivariate uses two numeric foreground variables", {
   sce <- make_na_foreground_sce()
   SummarizedExperiment::colData(sce)$score_y <- c(0, 1, NA, 3, 4)
 
-  p <- plotOverlay(
-    sce,
-    reduced_dim = "TSNE",
-    background = "solid",
-    foreground = c("numeric_score", "score_y"),
-    fg_type = "bivariate",
-    fg_limits = NULL
+  bivariate_palettes <- c(
+    "bivariateBright",
+    "bivariateOrangeBlue",
+    "bivariatePinkGreen",
+    "bivariateRedCyan",
+    "bivariateGreenRed",
+    "bivariateBlueYellow"
+  )
+  for (pal in bivariate_palettes) {
+    corners <- scOverlay:::.bivariate_palette_corners(pal)
+    expect_equal(names(corners), c("low_xy", "high_x", "high_y", "high_xy"))
+    expect_true(all(grepl("^#", corners)))
+    mat <- scOverlay:::.bivariate_palette(pal, n = 5)
+    expect_equal(dim(mat), c(5L, 5L))
+    expect_true(all(grepl("^#", as.vector(mat))))
+    expect_s3_class(plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = c("numeric_score", "score_y"),
+      fg_type = "bivariate",
+      fg_palette = pal,
+      fg_legend = FALSE
+    ), "ggplot")
+  }
+
+  expect_silent(
+    p_default_legend <- plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = c("numeric_score", "score_y"),
+      fg_type = "bivariate"
+    )
+  )
+  expect_s3_class(p_default_legend, "ggplot")
+
+  expect_silent(
+    p <- plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = c("numeric_score", "score_y"),
+      fg_type = "bivariate",
+      fg_limits = NULL,
+      fg_legend = FALSE
+    )
   )
   foreground <- get_foreground_layer_data(p)
   expect_s3_class(p, "ggplot")
@@ -1518,9 +1558,38 @@ test_that("fg_type bivariate uses two numeric foreground variables", {
     background = "solid",
     foreground = c("numeric_score", "score_y"),
     fg_type = "bivariate",
-    fg_limits = "shared"
+    fg_limits = "shared",
+    fg_legend = FALSE
   )
   expect_s3_class(p_shared, "ggplot")
+
+  custom_named <- c(
+    low_xy = "#e6e6e6",
+    high_x = "#ff4346",
+    high_y = "#55b2ff",
+    high_xy = "#7a1fa2"
+  )
+  p_custom_named <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("numeric_score", "score_y"),
+    fg_type = "bivariate",
+    fg_palette = custom_named,
+    fg_legend = FALSE
+  )
+  expect_s3_class(p_custom_named, "ggplot")
+
+  p_custom_unnamed <- plotOverlay(
+    sce,
+    reduced_dim = "TSNE",
+    background = "solid",
+    foreground = c("numeric_score", "score_y"),
+    fg_type = "bivariate",
+    fg_palette = unname(custom_named),
+    fg_legend = FALSE
+  )
+  expect_s3_class(p_custom_unnamed, "ggplot")
 
   expect_error(
     plotOverlay(
@@ -1529,7 +1598,59 @@ test_that("fg_type bivariate uses two numeric foreground variables", {
       background = "solid",
       foreground = c("numeric_score", "score_y"),
       fg_type = "bivariate",
-      fg_limits = c(0, 5)
+      fg_palette = custom_named[1:3],
+      fg_legend = FALSE
+    ),
+    "vector of four colours"
+  )
+
+  expect_error(
+    plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = c("numeric_score", "score_y"),
+      fg_type = "bivariate",
+      fg_palette = stats::setNames(custom_named, c("low_xy", "high_x", "high_y", "wrong")),
+      fg_legend = FALSE
+    ),
+    "low_xy, high_x, high_y and high_xy"
+  )
+
+  expect_error(
+    plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = c("numeric_score", "score_y"),
+      fg_type = "bivariate",
+      fg_palette = c(low_xy = "#e6e6e6", high_x = "not_a_colour", high_y = "#55b2ff", high_xy = "#7a1fa2"),
+      fg_legend = FALSE
+    ),
+    "vector of four colours"
+  )
+
+  expect_warning(
+    plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = c("numeric_score", "score_y"),
+      fg_type = "bivariate",
+      fg_legend = TRUE
+    ),
+    "plotBivariateLegend"
+  )
+
+  expect_error(
+    plotOverlay(
+      sce,
+      reduced_dim = "TSNE",
+      background = "solid",
+      foreground = c("numeric_score", "score_y"),
+      fg_type = "bivariate",
+      fg_limits = c(0, 5),
+      fg_legend = FALSE
     ),
     "Numeric foreground limits are not supported"
   )
@@ -1550,7 +1671,8 @@ test_that("fg_type bivariate uses two numeric foreground variables", {
       reduced_dim = "TSNE",
       background = "solid",
       foreground = "numeric_score",
-      fg_type = "bivariate"
+      fg_type = "bivariate",
+      fg_legend = FALSE
     ),
     "character vector of length 2"
   )
@@ -1561,9 +1683,37 @@ test_that("fg_type bivariate uses two numeric foreground variables", {
       reduced_dim = "TSNE",
       background = "solid",
       foreground = c("numeric_score", "categorical_state"),
-      fg_type = "bivariate"
+      fg_type = "bivariate",
+      fg_legend = FALSE
     ),
     "requires both foreground variables to be numeric"
+  )
+})
+
+test_that("plotBivariateLegend returns a labelled ggplot", {
+  leg <- plotBivariateLegend(c("GeneX", "GeneY"))
+  expect_s3_class(leg, "ggplot")
+  expect_equal(leg$labels$x, "GeneX")
+  expect_equal(leg$labels$y, "GeneY")
+
+  expect_s3_class(plotBivariateLegend(
+    c("GeneX", "GeneY"),
+    palette = "bivariatePinkGreen",
+    n_bins = 5
+  ), "ggplot")
+
+  expect_s3_class(plotBivariateLegend(
+    c("GeneX", "GeneY"),
+    palette = c(low_xy = "#e6e6e6", high_x = "#ff4346", high_y = "#55b2ff", high_xy = "#7a1fa2")
+  ), "ggplot")
+
+  expect_error(
+    plotBivariateLegend("GeneX"),
+    "character vector of length 2"
+  )
+  expect_error(
+    plotBivariateLegend(c("GeneX", "GeneY"), n_bins = 1),
+    "n_bins"
   )
 })
 

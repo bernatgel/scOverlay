@@ -142,11 +142,15 @@
 #' palette name, a vector of colours or a palette function, and the value is
 #' passed to \code{\link{getPalette}}. For continuous foregrounds, colour vectors
 #' are interpreted as gradient anchors and interpolated internally. For
-#' bivariate foregrounds, \code{NULL} uses \code{"orange_blue"}. For combination
-#' foregrounds, \code{NULL} uses \code{"combinationBright"}; user-supplied
-#' palettes still override this default. Defaults to \code{NULL}, which uses
-#' \code{"gray_red"} for continuous foregrounds and \code{"scOverlay"} for
-#' ordinary categorical foregrounds.
+#' bivariate foregrounds, \code{NULL} uses \code{"bivariateBright"} and users
+#' can provide a built-in bivariate palette name or a four-colour vector with
+#' corners named \code{low_xy}, \code{high_x}, \code{high_y} and
+#' \code{high_xy}. The first foreground variable maps to the x direction and
+#' \code{high_x}; the second maps to the y direction and \code{high_y}. For
+#' combination foregrounds, \code{NULL} uses \code{"combinationBright"};
+#' user-supplied palettes still override this default. Defaults to \code{NULL},
+#' which uses \code{"gray_red"} for continuous foregrounds and \code{"scOverlay"}
+#' for ordinary categorical foregrounds.
 #'
 #' @param bg_raster Logical value. If \code{TRUE}, rasterize the background point
 #' layer using \code{ggrastr::geom_point_rast()}. Defaults to \code{FALSE}.
@@ -185,7 +189,9 @@
 #'
 #' @param fg_legend Logical value indicating whether to show the foreground
 #' legend. It is ignored when \code{foreground = "solid"} or
-#' \code{foreground = "none"}. Defaults to \code{TRUE}.
+#' \code{foreground = "none"}. Bivariate foregrounds do not use a normal ggplot
+#' foreground legend; use \code{\link{plotBivariateLegend}} to create a separate
+#' bivariate legend. Defaults to \code{TRUE}.
 #'
 #' @param bg_legend_title Character value with the title of the background
 #' legend. If \code{NULL}, \code{background} is used. Defaults to \code{NULL}.
@@ -291,6 +297,7 @@ plotOverlay <- function(
 		bg_values = NULL,
 		fg_values = NULL
 ) {
+	fg_legend_missing <- missing(fg_legend)
 	.validate_sce(sce)
 	if (!is.numeric(bg_dimming) || length(bg_dimming) != 1L ||
 			is.na(bg_dimming) || !is.finite(bg_dimming) ||
@@ -315,6 +322,8 @@ plotOverlay <- function(
 		fg_order <- match.arg(fg_order)
 		if (identical(fg_type, "bivariate")) {
 			.validate_bivariate_fg_limits(fg_limits)
+			.handle_bivariate_fg_legend(fg_legend, fg_legend_missing)
+			fg_legend <- FALSE
 		} else if (identical(fg_type, "combination")) {
 			.validate_combination_fg_limits(fg_limits)
 		} else {
@@ -339,7 +348,7 @@ plotOverlay <- function(
 				features = foreground,
 				assay = fg_assay,
 				limits = fg_limits,
-				palette = fg_palette %||% "orange_blue"
+				palette = .resolve_fg_palette(fg_palette, "bivariate")
 			)
 		} else if (identical(fg_type, "combination")) {
 			fg <- .prepare_combination_values(
@@ -572,6 +581,88 @@ plotOverlay <- function(
 	return(p)
 }
 
+#' Plot a standalone bivariate colour legend
+#'
+#' \code{plotBivariateLegend} creates a square tile legend for bivariate
+#' foreground palettes used by \code{\link{plotOverlay}} when
+#' \code{fg_type = "bivariate"}. It returns a standalone \pkg{ggplot2} object
+#' that can be combined manually with an overlay plot, for example with
+#' \pkg{patchwork}.
+#'
+#' @param features Character vector of length two. The first feature labels the
+#' x direction and maps to the \code{high_x} palette corner; the second feature
+#' labels the y direction and maps to \code{high_y}.
+#'
+#' @param palette Bivariate palette specification. It can be one of the built-in
+#' bivariate palette names, such as \code{"bivariateBright"}, or a four-colour
+#' vector with corners named \code{low_xy}, \code{high_x}, \code{high_y} and
+#' \code{high_xy}. Unnamed four-colour vectors are interpreted in that order.
+#' Defaults to \code{"bivariateBright"}.
+#'
+#' @param n_bins Number of bins per axis in the displayed colour grid. Must be a
+#' single integer greater than or equal to 2. Defaults to \code{9}.
+#'
+#' @return A \pkg{ggplot2} object containing the bivariate colour grid.
+#'
+#' @examples
+#' leg <- plotBivariateLegend(c("SOX10", "MKI67"))
+#' leg
+#'
+#' @export
+
+plotBivariateLegend <- function(features,
+																palette = "bivariateBright",
+																n_bins = 9L) {
+	return(.plot_bivariate_palette_grid(
+		palette = palette,
+		features = features,
+		n_bins = n_bins,
+		title = NULL
+	))
+}
+
+.plot_bivariate_palette_grid <- function(palette,
+																				 features = c("Feature 1", "Feature 2"),
+																				 n_bins = 9L,
+																				 title = NULL) {
+	if (!is.character(features) || length(features) != 2L || anyNA(features)) {
+		stop("`features` must be a character vector of length 2.", call. = FALSE)
+	}
+	if (!is.numeric(n_bins) || length(n_bins) != 1L || is.na(n_bins) || n_bins < 2L) {
+		stop("`n_bins` must be a single integer greater than or equal to 2.", call. = FALSE)
+	}
+	n_bins <- as.integer(n_bins)
+	palette_matrix <- .bivariate_palette(palette, n_bins)
+	legend_data <- expand.grid(
+		x = seq_len(n_bins),
+		y = seq_len(n_bins),
+		KEEP.OUT.ATTRS = FALSE
+	)
+	legend_data$colour <- as.vector(t(palette_matrix))
+	p <- ggplot2::ggplot(legend_data, ggplot2::aes(.data$x, .data$y, fill = .data$colour)) +
+		ggplot2::geom_tile() +
+		ggplot2::scale_fill_identity() +
+		ggplot2::scale_x_continuous(
+			name = features[[1]],
+			breaks = c(1, n_bins),
+			labels = c("Low", "High"),
+			expand = c(0, 0)
+		) +
+		ggplot2::scale_y_continuous(
+			name = features[[2]],
+			breaks = c(1, n_bins),
+			labels = c("Low", "High"),
+			expand = c(0, 0)
+		) +
+		ggplot2::labs(x = features[[1]], y = features[[2]]) +
+		ggplot2::coord_fixed() +
+		ggplot2::theme_classic()
+	if (!is.null(title)) {
+		p <- p + ggplot2::ggtitle(title)
+	}
+	return(p)
+}
+
 
 
 # Helper for NULL defaults
@@ -634,10 +725,25 @@ plotOverlay <- function(
 
 # Helper to choose mode-specific foreground palette defaults.
 .resolve_fg_palette <- function(fg_palette, fg_type) {
+	if (is.null(fg_palette) && identical(fg_type, "bivariate")) {
+		return("bivariateBright")
+	}
 	if (is.null(fg_palette) && identical(fg_type, "combination")) {
 		return("combinationBright")
 	}
 	return(fg_palette)
+}
+
+# Helper to warn users away from unsupported one-dimensional bivariate guides.
+.handle_bivariate_fg_legend <- function(fg_legend, fg_legend_missing) {
+	if (!isTRUE(fg_legend_missing) && isTRUE(fg_legend)) {
+		warning(
+			"`fg_legend = TRUE` is not supported for `fg_type = \"bivariate\"`. ",
+			"Use `plotBivariateLegend()` to create a separate bivariate legend.",
+			call. = FALSE
+		)
+	}
+	return(invisible(FALSE))
 }
 
 # Helper to choose default foreground legend titles.
@@ -832,7 +938,7 @@ plotOverlay <- function(
 																			assay,
 																			limits = NULL,
 																			n_bins = 9L,
-																			palette = "orange_blue") {
+																			palette = "bivariateBright") {
 	if (!is.character(features) || length(features) != 2L || anyNA(features)) {
 		stop("`fg_type = 'bivariate'` requires `foreground` to be a character vector of length 2.", call. = FALSE)
 	}
@@ -873,32 +979,103 @@ plotOverlay <- function(
 	))
 }
 
-# Helper to create an n x n bivariate palette matrix by RGB bilinear blending.
-.bivariate_palette <- function(name = "orange_blue", n = 9L) {
-	if (!is.character(name) || length(name) != 1L || is.na(name) ||
-			!identical(name, "orange_blue")) {
-		stop("`fg_palette` for `fg_type = 'bivariate'` must be NULL or \"orange_blue\".", call. = FALSE)
+.bivariate_palette_registry <- function() {
+	return(list(
+		bivariateBright = c(
+			low_xy = "#e6e6e6",
+			high_x = "#ff4346",
+			high_y = "#55b2ff",
+			high_xy = "#7a1fa2"
+		),
+		bivariateOrangeBlue = c(
+			low_xy = "#e8e8e8",
+			high_x = "#f46d43",
+			high_y = "#4393c3",
+			high_xy = "#542788"
+		),
+		bivariatePinkGreen = c(
+			low_xy = "#e8e8e8",
+			high_x = "#e7298a",
+			high_y = "#66a61e",
+			high_xy = "#762a83"
+		),
+		bivariateRedCyan = c(
+			low_xy = "#e6e6e6",
+			high_x = "#e41a1c",
+			high_y = "#00bfc4",
+			high_xy = "#6a3d9a"
+		),
+		bivariateGreenRed = c(
+			low_xy = "#e6e6e6",
+			high_x = "#2ca25f",
+			high_y = "#de2d26",
+			high_xy = "#ffd92f"
+		),
+		bivariateBlueYellow = c(
+			low_xy = "#e6e6e6",
+			high_x = "#3182bd",
+			high_y = "#fdd835",
+			high_xy = "#31a354"
+		)
+	))
+}
+
+.bivariate_palette_names <- function() {
+	return(names(.bivariate_palette_registry()))
+}
+
+.bivariate_palette_corners <- function(palette = "bivariateBright") {
+	builtins <- .bivariate_palette_registry()
+	corner_names <- c("low_xy", "high_x", "high_y", "high_xy")
+	if (is.character(palette) && length(palette) == 1L && !is.na(palette)) {
+		if (palette %in% names(builtins)) {
+			return(builtins[[palette]])
+		}
+		stop(
+			"`fg_palette` must be a built-in bivariate palette name or a vector of four colours when `fg_type = \"bivariate\"`.",
+			call. = FALSE
+		)
 	}
+	if (!is.character(palette) || length(palette) != 4L) {
+		stop(
+			"`fg_palette` must be a built-in bivariate palette name or a vector of four colours when `fg_type = \"bivariate\"`.",
+			call. = FALSE
+		)
+	}
+	if (!is.null(names(palette)) && any(nzchar(names(palette)))) {
+		if (!setequal(names(palette), corner_names)) {
+			stop("Named custom bivariate palettes must contain colours named low_xy, high_x, high_y and high_xy.", call. = FALSE)
+		}
+		palette <- palette[corner_names]
+	} else {
+		names(palette) <- corner_names
+	}
+	if (!.is_colour_vector(unname(palette))) {
+		stop(
+			"`fg_palette` must be a built-in bivariate palette name or a vector of four colours when `fg_type = \"bivariate\"`.",
+			call. = FALSE
+		)
+	}
+	return(palette)
+}
+
+# Helper to create an n x n bivariate palette matrix by RGB bilinear blending.
+.bivariate_palette <- function(palette = "bivariateBright", n = 9L) {
 	if (!is.numeric(n) || length(n) != 1L || is.na(n) || n < 2L) {
 		stop("`n` must be a single numeric value greater than or equal to 2.", call. = FALSE)
 	}
 	n <- as.integer(n)
-	corners <- grDevices::col2rgb(c(
-		low_low = "#E8E8E8",
-		high_low = "#F28E2B",
-		low_high = "#4E79A7",
-		high_high = "#4B1D5A"
-	)) / 255
+	corners <- grDevices::col2rgb(.bivariate_palette_corners(palette)) / 255
 	out <- matrix(NA_character_, nrow = n, ncol = n)
 	seq01 <- seq(0, 1, length.out = n)
 	for (iy in seq_len(n)) {
 		for (ix in seq_len(n)) {
 			tx <- seq01[ix]
 			ty <- seq01[iy]
-			rgb <- (1 - tx) * (1 - ty) * corners[, "low_low"] +
-				tx * (1 - ty) * corners[, "high_low"] +
-				(1 - tx) * ty * corners[, "low_high"] +
-				tx * ty * corners[, "high_high"]
+			rgb <- (1 - tx) * (1 - ty) * corners[, "low_xy"] +
+				tx * (1 - ty) * corners[, "high_x"] +
+				(1 - tx) * ty * corners[, "high_y"] +
+				tx * ty * corners[, "high_xy"]
 			out[iy, ix] <- grDevices::rgb(rgb[1], rgb[2], rgb[3])
 		}
 	}

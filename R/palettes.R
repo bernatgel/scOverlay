@@ -329,89 +329,166 @@ getPalette <- function(palette = NULL,
 
 #' List available scOverlay palettes
 #'
-#' \code{listPalettes} lists the palettes bundled with scOverlay or returns a
-#' compact graphical preview of them.
+#' \code{listPalettes} returns metadata for the palettes bundled with scOverlay.
 #'
 #' @details
-#' The function can return either a small metadata table or a \pkg{ggplot2}
-#' swatch plot. Categorical palettes are shown as their stored colours. Continuous
-#' palettes are stored internally as anchor colours and are interpolated to
-#' \code{n} colours when \code{plot = TRUE}.
-#'
-#' When \code{plot = TRUE} and \code{show_names = TRUE}, categorical palette
-#' swatches show their stored names when names are present. Built-in categorical
-#' palettes intentionally keep integer-like names because these are useful for
-#' cluster labels.
+#' Categorical palettes return their stored colour vectors. Internally defined
+#' continuous palettes return their stored anchor colours. Externally generated
+#' continuous palettes, such as \pkg{viridisLite} palettes, return
+#' \code{n = NA_integer_} and \code{colours = NA} because scOverlay does not
+#' store a fixed colour vector for them. Bivariate palettes return their four
+#' named corner colours: \code{low_xy}, \code{high_x}, \code{high_y} and
+#' \code{high_xy}.
 #'
 #' The \code{is_default} column marks the palettes used by
 #' \code{\link{getPalette}} when \code{palette = NULL}: \code{"scOverlay"} for
-#' categorical palettes and \code{"gray_red"} for continuous palettes.
+#' categorical palettes, \code{"gray_red"} for continuous palettes and
+#' \code{"bivariateBright"} for bivariate foregrounds.
 #'
 #' @param type Character value indicating which palettes to list. Accepted
-#' values are \code{"all"}, \code{"categorical"} and \code{"continuous"}. Defaults
-#' to \code{"all"}.
+#' values are \code{"all"}, \code{"categorical"}, \code{"continuous"} and
+#' \code{"bivariate"}. Defaults to \code{"all"}.
 #'
-#' @param plot Logical value. If \code{FALSE}, return a data frame with palette
-#' metadata. If \code{TRUE}, return a \pkg{ggplot2} swatch preview. Defaults to
-#' \code{FALSE}.
+#' @return A \code{data.frame} with palette \code{name}, \code{type}, stored
+#' colour count \code{n}, a \code{colours} list-column containing stored palette
+#' definitions, and a logical \code{is_default} column indicating the default
+#' palettes.
 #'
-#' @param n Number of colours used to display continuous palettes, and the
-#' maximum number of colours shown for categorical palettes when
-#' \code{plot = TRUE}. Non-integer values of \code{n} are truncated with
-#' \code{as.integer()}. Defaults to \code{24}.
-#'
-#' @param show_names Logical value. If \code{TRUE}, categorical palette previews
-#' show stored colour names when available, or position labels otherwise.
-#' Continuous palette previews do not show per-colour labels. Defaults to
-#' \code{TRUE}.
-#'
-#' @return If \code{plot = FALSE}, a \code{data.frame} with palette names, types,
-#' number of stored colours and a logical column indicating the default palettes.
-#' If \code{plot = TRUE}, a \pkg{ggplot2} object with a swatch preview.
-#'
-#' @seealso \code{\link{getPalette}}, \code{\link{plotOverlay}}.
+#' @seealso \code{\link{getPalette}}, \code{\link{plotPalettes}},
+#' \code{\link{plotBivariateLegend}} and \code{\link{plotOverlay}}.
 #'
 #' @examples
 #' listPalettes()
 #'
-#' listPalettes(type = "continuous")
+#' listPalettes(type = "bivariate")
 #'
-#' p <- listPalettes(plot = TRUE, n = 16, show_names = TRUE)
-#' p
+#' pal_info <- listPalettes(type = "bivariate")
+#' pal_info$colours[[pal_info$name == "bivariateBright"]]
 #'
 #' @export
 
-listPalettes <- function(type = c("all", "categorical", "continuous"),
-												 plot = FALSE,
+listPalettes <- function(type = c("all", "categorical", "continuous", "bivariate")) {
+	type <- .palette_type(type)
+	return(.palette_metadata(type))
+}
+
+#' Plot available scOverlay palettes
+#'
+#' \code{plotPalettes} displays the palettes bundled with scOverlay. Categorical
+#' and continuous palettes are displayed as one-dimensional swatches. Bivariate
+#' palettes are displayed as two-dimensional colour grids using the same
+#' orientation as \code{\link{plotBivariateLegend}}: feature 1 increases from
+#' left to right and feature 2 increases from bottom to top.
+#'
+#' Continuous palettes may be sampled or interpolated for display, including
+#' externally generated palettes such as \pkg{viridisLite} palettes. Use
+#' \code{\link{listPalettes}} to inspect, copy or modify stored palette
+#' definitions.
+#'
+#' @param type Character value indicating which palettes to display. Accepted
+#' values are \code{"all"}, \code{"categorical"}, \code{"continuous"} and
+#' \code{"bivariate"}. Defaults to \code{"all"}.
+#'
+#' @param n Number of colours used to display continuous palettes, the maximum
+#' number of colours shown for categorical palettes, and the number of bins per
+#' axis for bivariate palettes. Non-integer values are truncated with
+#' \code{as.integer()}. Defaults to \code{24}.
+#'
+#' @param show_names Logical value. If \code{TRUE}, categorical palette previews
+#' show stored colour names when available, or position labels otherwise.
+#' Bivariate palette names are always shown as plot titles. Defaults to
+#' \code{TRUE}.
+#'
+#' @return A \pkg{ggplot2} object for a single preview section or a
+#' \pkg{patchwork} object when multiple sections are shown.
+#'
+#' @seealso \code{\link{listPalettes}}, \code{\link{plotBivariateLegend}} and
+#' \code{\link{getPalette}}.
+#'
+#' @examples
+#' plotPalettes()
+#' plotPalettes(type = "bivariate")
+#'
+#' @export
+
+plotPalettes <- function(type = c("all", "categorical", "continuous", "bivariate"),
 												 n = 24,
 												 show_names = TRUE) {
-	type <- match.arg(type)
+	type <- .palette_type(type)
 	n <- .palette_n(n)
-
-	if (!is.logical(plot) || length(plot) != 1L || is.na(plot)) {
-		stop("`plot` must be TRUE or FALSE.", call. = FALSE)
-	}
 	if (!is.logical(show_names) || length(show_names) != 1L || is.na(show_names)) {
 		stop("`show_names` must be TRUE or FALSE.", call. = FALSE)
 	}
+	info <- .palette_metadata(type)
+	plots <- list()
+	univariate_info <- info[info$type %in% c("categorical", "continuous"), , drop = FALSE]
+	if (nrow(univariate_info) > 0L) {
+		plots[["univariate"]] <- .plot_univariate_palettes(univariate_info, n, show_names)
+	}
+	bivariate_info <- info[info$type == "bivariate", , drop = FALSE]
+	if (nrow(bivariate_info) > 0L) {
+		plots[["bivariate"]] <- .plot_bivariate_palettes(bivariate_info, n)
+	}
+	if (length(plots) == 1L) {
+		return(plots[[1L]])
+	}
+	return(patchwork::wrap_plots(plots, ncol = 1L))
+}
 
-	types <- if (identical(type, "all")) c("categorical", "continuous") else type
+.palette_metadata <- function(type) {
+	types <- if (identical(type, "all")) c("categorical", "continuous", "bivariate") else type
 	info <- do.call(rbind, lapply(types, function(palette_type) {
-		palettes <- scOverlay_palettes[[palette_type]]
-		data.frame(
-			name = names(palettes),
+		if (identical(palette_type, "bivariate")) {
+			palette_names <- .bivariate_palette_names()
+			n_colours <- rep(4L, length(palette_names))
+			colours <- lapply(palette_names, .bivariate_palette_corners)
+		} else {
+			palettes <- scOverlay_palettes[[palette_type]]
+			palette_names <- names(palettes)
+			n_colours <- vapply(palettes, length, integer(1))
+			colours <- unname(palettes)
+			if (identical(palette_type, "continuous")) {
+				viridis_names <- setdiff(.viridis_palette_names(), palette_names)
+				palette_names <- c(palette_names, viridis_names)
+				n_colours <- c(n_colours, rep(NA_integer_, length(viridis_names)))
+				colours <- c(colours, as.list(rep(NA_character_, length(viridis_names))))
+			}
+		}
+		info <- data.frame(
+			name = palette_names,
 			type = palette_type,
-			n_colours = vapply(palettes, length, integer(1)),
-			is_default = names(palettes) == .default_palette_name(palette_type),
+			n = n_colours,
+			is_default = palette_names == .default_palette_name(palette_type),
 			stringsAsFactors = FALSE
 		)
+		info <- .transform_palette_colours(info, colours)
+		return(info)
 	}))
 	rownames(info) <- NULL
+	return(info)
+}
 
-	if (!isTRUE(plot)) {
-		return(info)
+.palette_type <- function(type) {
+	choices <- c("all", "categorical", "continuous", "bivariate")
+	if (identical(type, choices)) {
+		return("all")
 	}
+	if (!is.character(type) || length(type) != 1L || is.na(type) || !(type %in% choices)) {
+		stop(
+			"`type` must be one of \"all\", \"categorical\", \"continuous\" or \"bivariate\".",
+			call. = FALSE
+		)
+	}
+	return(type)
+}
 
+.transform_palette_colours <- function(info, colours) {
+	info$colours <- I(colours)
+	info <- info[, c("name", "type", "n", "colours", "is_default"), drop = FALSE]
+	return(info)
+}
+
+.plot_univariate_palettes <- function(info, n, show_names) {
 	swatch_data <- do.call(rbind, lapply(seq_len(nrow(info)), function(i) {
 		palette_name <- info$name[[i]]
 		palette_type <- info$type[[i]]
@@ -466,6 +543,19 @@ listPalettes <- function(type = c("all", "categorical", "continuous"),
 	return(p)
 }
 
+.plot_bivariate_palettes <- function(info, n) {
+	plots <- lapply(info$name, function(palette_name) {
+		.plot_bivariate_palette_grid(
+			palette = palette_name,
+			features = c("Feature 1", "Feature 2"),
+			n_bins = max(2L, n),
+			title = palette_name
+		)
+	})
+	names(plots) <- info$name
+	return(patchwork::wrap_plots(plots))
+}
+
 # Resolve the requested palette length. If n is omitted for a categorical palette,
 # use the number of expected values; otherwise fall back to a smooth gradient size.
 .palette_n <- function(n, values = NULL) {
@@ -482,12 +572,15 @@ listPalettes <- function(type = c("all", "categorical", "continuous"),
 
 # Resolve the internal palette name used when users request package defaults.
 .default_palette_name <- function(type) {
-	type <- match.arg(type, c("categorical", "continuous"))
+	type <- match.arg(type, c("categorical", "continuous", "bivariate"))
 	if (identical(type, "categorical")) {
 		return("scOverlay")
 	}
 	if (identical(type, "continuous")) {
 		return("gray_red")
+	}
+	if (identical(type, "bivariate")) {
+		return("bivariateBright")
 	}
 	stop("Invalid palette type.", call. = FALSE)
 }
@@ -528,6 +621,19 @@ listPalettes <- function(type = c("all", "categorical", "continuous"),
 		return(NULL)
 	}
 	return(fun(n))
+}
+
+.viridis_palette_names <- function() {
+	return(c(
+		"viridis",
+		"magma",
+		"inferno",
+		"plasma",
+		"cividis",
+		"rocket",
+		"mako",
+		"turbo"
+	))
 }
 
 # Look up a ColorBrewer palette by exact name. The type argument is currently

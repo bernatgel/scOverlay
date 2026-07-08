@@ -219,14 +219,30 @@ test_that("plotOverlayPerGroup supports shared limits and legends", {
   })
 
   SummarizedExperiment::colData(sce)$numeric_y <- rev(seq_len(ncol(sce)))
-  g_bivar <- plotOverlayPerGroup(
-    sce,
-    foreground = c("numeric_fg", "numeric_y"),
-    group_col = "sample_type",
-    background = "solid",
-    fg_type = "bivariate",
-    fg_limits = "shared",
-    fg_subset_cells = subset_idx
+  expect_silent(
+    g_bivar_default_legend <- plotOverlayPerGroup(
+      sce,
+      foreground = c("numeric_fg", "numeric_y"),
+      group_col = "sample_type",
+      background = "solid",
+      fg_type = "bivariate",
+      fg_limits = "shared",
+      fg_subset_cells = subset_idx
+    )
+  )
+  expect_s3_class(g_bivar_default_legend, "patchwork")
+
+  expect_silent(
+    g_bivar <- plotOverlayPerGroup(
+      sce,
+      foreground = c("numeric_fg", "numeric_y"),
+      group_col = "sample_type",
+      background = "solid",
+      fg_type = "bivariate",
+      fg_limits = "shared",
+      fg_subset_cells = subset_idx,
+      fg_legend = FALSE
+    )
   )
   expect_s3_class(g_bivar, "patchwork")
   bivar_layers <- lapply(patchwork_child_plots(g_bivar), grouped_foreground_layer_data)
@@ -240,9 +256,22 @@ test_that("plotOverlayPerGroup supports shared limits and legends", {
       group_col = "sample_type",
       background = "solid",
       fg_type = "bivariate",
-      fg_limits = c(0, 5)
+      fg_limits = c(0, 5),
+      fg_legend = FALSE
     ),
     "Numeric foreground limits are not supported"
+  )
+
+  expect_warning(
+    plotOverlayPerGroup(
+      sce,
+      foreground = c("numeric_fg", "numeric_y"),
+      group_col = "sample_type",
+      background = "solid",
+      fg_type = "bivariate",
+      fg_legend = TRUE
+    ),
+    "plotBivariateLegend"
   )
 
   g_bg <- plotOverlayPerGroup(
