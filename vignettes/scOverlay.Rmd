@@ -31,7 +31,7 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-Dimensionality reduction plots such as TSNE and UMAP are commonly used to explore single-cell datasets. These plots are useful to represent the global structure of the data (represented by the positions of the points) usually accompanied by a variable such as gene expression, clustering, cell-type or QC values which are represented in the color of the points. However, the traditional approach to to these plots is limited to a single variable and we cannot respresent at the same time the expression of a gene while keeping the distribution of samples, cell types or clusters visible as a reference.
+Dimensionality reduction plots such as TSNE and UMAP are commonly used to explore single-cell datasets. These plots are useful to represent the global structure of the data (represented by the positions of the points) usually accompanied by a variable such as gene expression, clustering, cell-type or QC values which are represented in the color of the points. However, the traditional approach to these plots is limited to a single variable and we cannot represent at the same time the expression of a gene while keeping the distribution of samples, cell types or clusters visible as a reference.
 
 `scOverlay` is designed to solve this by creating multi-layered plots for single-cell data. Using a simple layered representation, it creates a background layer colored according to a given variable (e.g. cell-type) and then draws the foreground variable on top using an independent colour scale (e.g. gene-expression). An optional dimming value partially mutes the background layer so it does not interfere with the correct interpretation of the foreground one. 
 
@@ -39,9 +39,11 @@ Therefore, the background layer provides the context and the foreground layer is
 
 A key additional feature of `scOverlay` is that subsetting can be applied to the foreground layer. This means that we can highlight the cells from a specific sample, sample type or condition while still showing the complete embedding in the background. This is useful when comparing where different groups of cells are located in the same reduced dimension space and is really helpful in identifying composition differences in related samples or sample types.
 
+`scOverlay` can also represent multiple foreground features using bivariate blend plots and expression-combination plots.
+
 `scOverlay` works with `SingleCellExperiment` objects and only need the object to contain at least one reduced dimension representation, such as `"TSNE"` or `"UMAP"`, and the variables to be plotted either in the assays or in `colData`.
 
-The package is focused on visualizing already processed single-cell data and not intended to perform single-cell preprocessing, normalization or dimensionality reduction, which can be done with of the the many Bioconductor packages for single-cell data processing.
+The package is focused on visualizing already processed single-cell data and not intended to perform single-cell preprocessing, normalization or dimensionality reduction, which can be done with many Bioconductor packages for single-cell data processing.
 
 # Installation
 
@@ -95,7 +97,7 @@ plotOverlay(
 
 By default, the examples in this vignette use the `"TSNE"` reduced dimension. Other reduced dimensions can be selected with the `reduced_dim` argument. For example, the same plot could be drawn on the UMAP coordinates by setting `reduced_dim = "UMAP"`.
 
-We can select different backgrounds too: a solid colour, `"none"` for no visible background points, a gene  or a cell annotation. For example, cells can be coloured in the background by `cluster`, while the foreground shows the doublet score stored in `colData(sce_mpnst_example)$scDblFinder.score`. We can also ajust multiple visual parameters, such as palettes, point sizes, titles, etc...
+We can select different backgrounds too: a solid colour, `"none"` for no visible background points, a gene  or a cell annotation. For example, cells can be coloured in the background by `cluster`, while the foreground shows the doublet score stored in `colData(sce_mpnst_example)$scDblFinder.score`. We can also adjust multiple visual parameters, such as palettes, point sizes, titles, etc...
 
 ```{r quick-start-background}
 plotOverlay(
@@ -113,7 +115,7 @@ plotOverlay(
 )
 ```
 
-One of the main uses of `scOverlay` is to highlight only a subset of cells while keeping the complete dataset visibke in the background as context. Here we plot `CDH19` expression only in the cells from one sample. The background still contains all cells.
+One of the main uses of `scOverlay` is to highlight only a subset of cells while keeping the complete dataset visible in the background as context. Here we plot `CDH19` expression only in the cells from one sample. The background still contains all cells.
 
 ```{r quick-start-sample-subset}
 plotOverlay(
@@ -123,7 +125,7 @@ plotOverlay(
     background = "cluster",
     reduced_dim = "TSNE",
     fg_subset_cells = quote(sample == "38ANF1"),
-    title = "CDH19 in 50PNF",
+    title = "CDH19 in 38ANF1",
     bg_dimming = 0.9,
     bg_legend = FALSE
 )
@@ -192,7 +194,9 @@ The foreground layer contains the variable we want to highlight while the backgr
 
 When the foreground is a gene, expression values are taken from the assay specified by `fg_assay`. By default, `plotOverlay()` uses the `"logcounts"` assay. The same happens for background with `bg_assay`.
 
-The data layers (foreground and background) can also show cell annotations in `colData(sce)`. Typically, it can be the cluster, the samples, sample types... but can also be any other column, including continuos (non-categorical) values such as doublet-scores and other QC-related values. The type of value used (continuous or categorical) is autodetected, but we can specify it explicitly with `fg_type = "categorical"` or `fg_type = "continuous"` (and `bg_type = "categorical"` or `bg_type = "continuous"` for the background). This will affect the coloring schemes used to plot them.
+The data layers (foreground and background) can also show cell annotations in `colData(sce)`. Typically, it can be the cluster, the samples, sample types... but can also be any other column, including continuous (non-categorical) values such as doublet-scores and other QC-related values. The type of value used (continuous or categorical) is autodetected, but we can specify it explicitly with `fg_type = "categorical"` or `fg_type = "continuous"` (and `bg_type = "categorical"` or `bg_type = "continuous"` for the background). This will affect the coloring schemes used to plot them.
+
+The foreground can be a vector of feature or column names only when using `fg_type = "bivariate"` or `fg_type = "combination"`.
 
 *Important:* autodetection of value types is simple: if it's a numeric vector, assume it's continuous, if it's anything else, treat it as categorical. This works largely fine, but for some cases (such as clusters) where categories (clusters) are specified as integers, we might need to either convert the column in colData to a factor or explicitly specify `fg_type = "categorical"`.
 
@@ -207,7 +211,7 @@ plotOverlay(
 )
 ```
 
-In addition to represening a variable, both foreground and background can be set to `solid` or `none`. These are special values that will plot all points of the same color with `solid` or plot no points at all in that layer if set to `none`. If a layer is set to `solid`, by default it will be plotted as gray dots. We can use `fg_palette` and `bg_palette` to change their color.
+In addition to representing a variable, both foreground and background can be set to `solid` or `none`. These are special values that will plot all points of the same color with `solid` or plot no points at all in that layer if set to `none`. If a layer is set to `solid`, by default it will be plotted as gray dots. We can use `fg_palette` and `bg_palette` to change their color.
 
 We can also alter the ordering of the cells when plotting with `fg_order` and `bg_order`. This might be useful to avoid visual artifacts when plotting the cells as ordered in the `SingleCellExperiment` object (usually sorted by sample) or to improve the visibility of positive cells in very dense plots. To avoid plotting the cell sorted per sample we could use `fg_order = "random"` which would randomize the plotting order. To ensure that positive cells are visible over the negative ones we can plot them with `fg_order = "ascending"`.
 
@@ -228,6 +232,81 @@ p4 <- plotOverlay(
     bg_legend = FALSE
 )
 p4
+```
+
+
+# Plotting multiple genes on the foreground
+
+Some questions involve more than one foreground feature. `scOverlay` supports this through two explicit foreground modes: bivariate blends for two numeric variables, and expression-combination plots for small sets of numeric variables.
+
+## Bivariate foregrounds
+
+Bivariate foregrounds blend two numeric variables into a two-dimensional colour scale. The first foreground variable defines the x direction and maps to the `high_x` colour corner; the second foreground variable defines the y direction and maps to the `high_y` colour corner. Because this is not a regular one-dimensional ggplot colour scale, bivariate plots do not use a standard ggplot legend. Use `plotBivariateLegend()` to create a separate two-dimensional legend and combine it manually with the plot.
+
+```{r bivariate-foreground, fig.width=7, fig.height=4, fig.wide=TRUE}
+p_biv <- plotOverlay(
+    sce = sce_mpnst_example,
+    foreground = c("SOX10", "MKI67"),
+    fg_type = "bivariate",
+    fg_palette = "bivariateBright",
+    background = "cluster",
+    bg_dimming = 0.9,
+    bg_legend = FALSE,
+    reduced_dim = "TSNE"
+)
+
+leg_biv <- plotBivariateLegend(
+    features = c("SOX10", "MKI67"),
+    palette = "bivariateBright"
+)
+
+patchwork::wrap_plots(p_biv, leg_biv, widths = c(1, 0.25))
+```
+
+Custom bivariate palettes use four named corner colours.
+
+```{r custom-bivariate-palette, eval=FALSE}
+custom_biv <- c(
+    low_xy = "#e6e6e6",
+    high_x = "#ff4346",
+    high_y = "#55b2ff",
+    high_xy = "#7a1fa2"
+)
+
+plotBivariateLegend(
+    features = c("SOX10", "MKI67"),
+    palette = custom_biv
+)
+```
+
+## Expression-combination foregrounds
+
+Combination foregrounds convert each foreground feature into an expressed/not-expressed call and then plot the resulting combinations as categorical foreground values. By default, `fg_threshold = 0`, and expression is called with the strict rule `value > fg_threshold`, so exact zero is not expressed. Labels such as `SOX10-/MKI67+` are categorical values, and the `combinationBright` palette is used by default.
+
+```{r combination-foreground, fig.width=5, fig.height=4}
+plotOverlay(
+    sce = sce_mpnst_example,
+    foreground = c("SOX10", "MKI67"),
+    fg_type = "combination",
+    fg_threshold = 0,
+    background = "cluster",
+    bg_dimming = 0.9,
+    bg_legend = FALSE,
+    reduced_dim = "TSNE"
+)
+```
+
+For larger combinations, a data-driven threshold can be useful.
+
+```{r combination-foreground-median, eval=FALSE}
+plotOverlay(
+    sce = sce_mpnst_example,
+    foreground = c("SOX10", "MKI67", "CDH19"),
+    fg_type = "combination",
+    fg_threshold = "median",
+    background = "solid",
+    reduced_dim = "TSNE"
+)
 ```
 
 
@@ -332,7 +411,7 @@ p4
 
 ## Shared scales and legends
 
-When plotting the same gene or other value in multiple plots, it's important to have them all sharing the same limits for the scales. `fg_limits` and `bg_limits` can be used to specify exact limits (e.g. `fg_limits=c(0,6)`) if available or already computed. Another option is to use the `shared` option. `fg_limits = "shared"` computes one foreground range valid for all plots in the group,  `bg_limits = "shared"` does the same for continuous backgrounds across all cells. Chared limits computation is performed after applying any global foreground subset and before splitting into groups. Compatible legends can be collected with `shared_legend = TRUE` and moved with regular patchwork syntax.
+When plotting the same gene or other value in multiple plots, it's important to have them all sharing the same limits for the scales. `fg_limits` and `bg_limits` can be used to specify exact limits (e.g. `fg_limits=c(0,6)`) if available or already computed. Another option is to use the `shared` option. `fg_limits = "shared"` computes one foreground range valid for all plots in the group,  `bg_limits = "shared"` does the same for continuous backgrounds across all cells. Shared limits computation is performed after applying any global foreground subset and before splitting into groups. Compatible legends can be collected with `shared_legend = TRUE` and moved with regular patchwork syntax.
 
 ```{r per-group-shared-scales, fig.width=12, fig.height=4.5, fig.wide=TRUE}
 p_shared <- plotOverlayPerGroup(
@@ -408,26 +487,33 @@ p1
 
 # Palettes
 
-`scOverlay` includes several categorical and continuous palettes. They can be listed with `listPalettes()`.
+`scOverlay` includes categorical, continuous and bivariate palettes. Palette definitions and metadata can be listed with `listPalettes()`.
 
 ```{r list-palettes}
 listPalettes()
 ```
 
+```{r list-bivariate-palettes}
+listPalettes(type = "bivariate")
+```
+
 A graphical preview can be generated with `plotPalettes()`.
 
 ```{r list-palettes-plot, fig.width=9, fig.height=7, fig.wide=TRUE}
-plotPalettes(n = 50)
+plotPalettes(n = 9)
 ```
 
 Palettes are selected by name with `bg_palette` or `fg_palette`. Continuous palettes are stored internally as anchor colours and interpolated to the number of colours needed for the plot. This also means that user-defined continuous palettes can be provided as a small vector of colours that will be automatically interpolated. All  palettes from CRANpkg("ViridisLite") and CRANpkg("RColorBrewer") are also available.
 
 Here are a few plots with different palettes.
 
-```{r palette-patchwork, fig.width=12, fig.height=12, fig.wide=TRUE}
-my_palettes <- list("gray_red", "blue_gold", "gray_blue", #from scOverlay
-                    "magma", "viridis", "cividis", #from viridisLite 
-                    c("goldenrod", "dodgerblue"), c("cornsilk", "khaki1", "yellow2", "darkgoldenrod"), c("#AAAAEE", "#AAEEEE", "#22DDDD"))
+```{r palette-patchwork, fig.width=8, fig.height=7, fig.wide=TRUE}
+my_palettes <- list(
+    "gray_red",
+    "blue_gold",
+    "viridis",
+    c("cornsilk", "khaki1", "yellow2", "darkgoldenrod")
+)
 
 plots <- lapply(my_palettes, function(pal) {
     plotOverlay(
@@ -443,7 +529,7 @@ plots <- lapply(my_palettes, function(pal) {
 })
 
 
-patchwork::wrap_plots(plots, ncol = 3)
+patchwork::wrap_plots(plots, ncol = 2)
 ```
 
 
@@ -594,7 +680,7 @@ ggplot2::ggsave(
 )
 ```
 
-Grouped plots are saved in the same way: create the plot object first, then pass it to `ggplot2::ggsave()`. For grouped plots, take into account the number pf panels to define the image size.
+Grouped plots are saved in the same way: create the plot object first, then pass it to `ggplot2::ggsave()`. For grouped plots, take into account the number of panels to define the image size.
 
 ```{r save-grouped-plot, eval=FALSE}
 p_grouped <- plotOverlayPerGroup(
