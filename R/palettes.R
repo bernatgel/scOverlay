@@ -438,7 +438,7 @@ plotPalettes <- function(type = c("all", "categorical", "continuous", "bivariate
 	if (length(plots) == 1L) {
 		return(plots[[1L]])
 	}
-	return(patchwork::wrap_plots(plots, ncol = 1L))
+	return(patchwork::wrap_plots(plots, ncol = 1L, heights = c(2, 1)))
 }
 
 .palette_metadata <- function(type) {
