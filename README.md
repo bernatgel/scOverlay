@@ -54,7 +54,7 @@ data("sce_overlay_example")
 
 plotOverlay(
     sce = sce_overlay_example,
-    foreground = "CDH19",
+    foreground = "SOX10",
     background = "cluster",
     reduced_dim = "TSNE"
 )
@@ -66,10 +66,10 @@ from `colData(sce)`, `"solid"` or `"none"`.
 ```r
 plotOverlay(
     sce = sce_overlay_example,
-    foreground = "scDblFinder.score",
+    foreground = "S100B",
     background = "cluster",
-    fg_subset_cells = quote(cluster == "1"),
-    fg_palette = "red",
+    fg_subset_cells = quote(cluster == "C1"),
+    fg_palette = "magma",
     reduced_dim = "TSNE"
 )
 ```
@@ -80,7 +80,7 @@ Grouped plots can be created with `plotOverlayPerGroup()`:
 plotOverlayPerGroup(
     sce = sce_overlay_example,
     group_col = "sample_type",
-    foreground = "PRRX1",
+    foreground = "SOX10",
     background = "cluster",
     reduced_dim = "TSNE",
     fg_limits = "shared",
@@ -102,13 +102,13 @@ Bioconductor links will become active once the package is available from Biocond
 
 ## Main features
 
-- Layered visualization of single-cell embeddings.
-- Support for gene expression and cell metadata in both background and foreground layers.
-- Foreground subsetting without removing the full embedding context.
-- Grouped and nested grouped plots.
-- Shared scales and shared legends for grouped visualizations.
-- Named categorical palettes for consistent colours across panels.
-- Optional rasterization of dense point layers.
+- Dual-layer embedding plots with independent background and foreground colour scales.
+- Foreground filtering while retaining the full embedding as context.
+- Grouped and nested plots with compact or grid layouts and optional shared scales and legends.
+- Bivariate colouring of two numeric foreground features.
+- Combination colouring of two to five numeric foreground features.
+- Palette listing, inspection and plotting utilities.
+- Optional rasterization of dense background and foreground point layers.
 - Standard `ggplot2` output objects that can be further customized.
 
 ## Citation
@@ -119,7 +119,6 @@ If you use `scOverlay` in published work, please cite it with:
 citation("scOverlay")
 ```
 
-A formal citation will be added once available.
 
 ## License
 
