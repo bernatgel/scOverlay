@@ -16,28 +16,60 @@ grouped_foreground_layer_data <- function(p) {
   return(foreground_layers[[length(foreground_layers)]])
 }
 
+grouped_plot_data <- function(p) {
+  expect_true(is.data.frame(p$data))
+  expect_true(all(c("X", "Y", "background", "foreground") %in% colnames(p$data)))
+  return(p$data)
+}
+
 expected_nested_panel_count <- function(sce, group_col, outer_col) {
-  group_vals <- as.character(SummarizedExperiment::colData(sce)[[group_col]])
-  outer_vals <- as.character(SummarizedExperiment::colData(sce)[[outer_col]])
-  valid <- !is.na(group_vals) & !is.na(outer_vals)
-  groups_per_outer <- vapply(
-    unique(outer_vals[valid]),
-    function(outer) length(unique(group_vals[valid & outer_vals == outer])),
-    integer(1)
+  layout <- scOverlay:::.nested_panel_layout(
+    sce = sce,
+    group_col = group_col,
+    outer_col = outer_col
   )
-  return(length(groups_per_outer) * max(groups_per_outer))
+  return(nrow(layout))
 }
 
 expected_nested_ncol <- function(sce, group_col, outer_col) {
-  group_vals <- as.character(SummarizedExperiment::colData(sce)[[group_col]])
-  outer_vals <- as.character(SummarizedExperiment::colData(sce)[[outer_col]])
-  valid <- !is.na(group_vals) & !is.na(outer_vals)
-  groups_per_outer <- vapply(
-    unique(outer_vals[valid]),
-    function(outer) length(unique(group_vals[valid & outer_vals == outer])),
-    integer(1)
+  layout <- scOverlay:::.nested_panel_layout(
+    sce = sce,
+    group_col = group_col,
+    outer_col = outer_col
   )
-  return(max(groups_per_outer))
+  return(max(table(layout$outer)))
+}
+
+make_repeated_nested_sce <- function(missing_o2_g1 = FALSE) {
+  outer <- c("O1", "O1", "O2", "O2")
+  group <- c("G1", "G2", "G1", "G2")
+  if (isTRUE(missing_o2_g1)) {
+    outer <- outer[-3]
+    group <- group[-3]
+  }
+  ncells <- length(outer)
+  cells <- paste0("cell", seq_len(ncells))
+  assays <- list(
+    logcounts = matrix(
+      seq_len(ncells),
+      nrow = 1L,
+      dimnames = list("Gene1", cells)
+    )
+  )
+  sce <- SingleCellExperiment::SingleCellExperiment(
+    assays = assays,
+    colData = data.frame(
+      outer = outer,
+      group = group,
+      row.names = cells
+    )
+  )
+  SingleCellExperiment::reducedDim(sce, "TSNE") <- matrix(
+    seq_len(ncells * 2L),
+    ncol = 2L,
+    dimnames = list(cells, c("TSNE1", "TSNE2"))
+  )
+  return(sce)
 }
 
 test_that("plotOverlayPerGroup returns patchwork object", {
@@ -692,6 +724,278 @@ test_that("nested grouped plots support combination foregrounds", {
   expect_s3_class(g, "patchwork")
 })
 
+test_that("nested panel layout uses observed outer/group combinations", {
+  sce <- make_repeated_nested_sce()
+
+  expect_identical(
+    scOverlay:::.resolve_nested_layout(
+      "auto",
+      outer_vals = c("O1", "O1", "O2", "O2"),
+      group_vals = c("G1", "G2", "G3", "G4")
+    ),
+    "compact"
+  )
+  expect_identical(
+    scOverlay:::.resolve_nested_layout(
+      "auto",
+      outer_vals = c("O1", "O1", "O2", "O2"),
+      group_vals = c("G1", "G2", "G1", "G2")
+    ),
+    "grid"
+  )
+  expect_identical(
+    scOverlay:::.resolve_nested_layout(
+      "compact",
+      outer_vals = c("O1", NA, "O2"),
+      group_vals = c("G1", "G1", NA)
+    ),
+    "compact"
+  )
+  expect_identical(
+    scOverlay:::.resolve_nested_layout(
+      "grid",
+      outer_vals = c("O1", NA, "O2"),
+      group_vals = c("G1", "G1", NA)
+    ),
+    "grid"
+  )
+  expect_identical(
+    scOverlay:::.resolve_nested_layout(
+      "auto",
+      outer_vals = c("O1", NA, "O2"),
+      group_vals = c("G1", "G1", NA)
+    ),
+    "compact"
+  )
+  expect_identical(
+    scOverlay:::.resolve_nested_layout(
+      "auto",
+      outer_vals = c("O1", "O1", "", NA, "O2"),
+      group_vals = c("G1", "G2", "G1", "G2", "G3")
+    ),
+    "compact"
+  )
+  expect_identical(
+    scOverlay:::.resolve_nested_layout(
+      "auto",
+      outer_vals = c("O1", "O2"),
+      group_vals = c("G1", "G1")
+    ),
+    "grid"
+  )
+
+  layout <- scOverlay:::.nested_panel_layout(
+    sce = sce,
+    group_col = "group",
+    outer_col = "outer",
+    group_order = c("G1", "G2"),
+    outer_order = c("O1", "O2"),
+    layout = "compact"
+  )
+
+  expect_equal(layout$key, c("O1__G1", "O1__G2", "O2__G1", "O2__G2"))
+  expect_equal(layout$outer, c("O1", "O1", "O2", "O2"))
+  expect_equal(layout$group, c("G1", "G2", "G1", "G2"))
+
+  outer_vals <- as.character(SummarizedExperiment::colData(sce)$outer)
+  group_vals <- as.character(SummarizedExperiment::colData(sce)$group)
+  expect_equal(
+    which(scOverlay:::.nested_panel_index(outer_vals, group_vals, "O1", "G1")),
+    1L
+  )
+  expect_equal(
+    which(scOverlay:::.nested_panel_index(outer_vals, group_vals, "O2", "G1")),
+    3L
+  )
+
+  panel_indices <- scOverlay:::.build_nested_panel_indices(
+    outer_vals = outer_vals,
+    group_vals = group_vals,
+    outer_order = c("O1", "O2"),
+    group_order = c("G1", "G2"),
+    layout = "grid"
+  )
+  expect_equal(names(panel_indices), c("O1__G1", "O1__G2", "O2__G1", "O2__G2"))
+  expect_equal(which(panel_indices[["O1__G1"]]), 1L)
+  expect_equal(which(panel_indices[["O1__G2"]]), 2L)
+  expect_equal(which(panel_indices[["O2__G1"]]), 3L)
+  expect_equal(which(panel_indices[["O2__G2"]]), 4L)
+
+  expect_identical(scOverlay:::.resolve_nested_panel_titles("auto"), "outer_inner")
+  expect_identical(scOverlay:::.nested_panel_title("O1", "G1", "outer_inner"), "G1 - O1")
+  expect_identical(scOverlay:::.nested_panel_title("O1", "G1", "inner"), "G1")
+  expect_null(scOverlay:::.nested_panel_title("O1", "G1", "none"))
+})
+
+test_that("nested grouped plots handle repeated inner groups by outer/group pair", {
+  sce <- make_repeated_nested_sce()
+
+  g <- plotOverlayPerNestedGroup(
+    sce,
+    outer_col = "outer",
+    group_col = "group",
+    foreground = "Gene1",
+    background = "solid",
+    outer_order = c("O1", "O2"),
+    group_order = c("G1", "G2"),
+    layout = "grid"
+  )
+
+  expect_s3_class(g, "patchwork")
+  expect_equal(
+    expected_nested_panel_count(sce, "group", "outer"),
+    4L
+  )
+})
+
+test_that("nested grouped plots skip missing combinations in compact layout", {
+  sce <- make_repeated_nested_sce(missing_o2_g1 = TRUE)
+
+  layout <- scOverlay:::.nested_panel_layout(
+    sce = sce,
+    group_col = "group",
+    outer_col = "outer",
+    group_order = c("G1", "G2"),
+    outer_order = c("O1", "O2"),
+    layout = "compact"
+  )
+  expect_equal(layout$key, c("O1__G1", "O1__G2", "O2__G2"))
+  expect_false("O2__G1" %in% layout$key)
+
+  grid_layout <- scOverlay:::.nested_panel_layout(
+    sce = sce,
+    group_col = "group",
+    outer_col = "outer",
+    group_order = c("G1", "G2"),
+    outer_order = c("O1", "O2"),
+    layout = "grid"
+  )
+  expect_equal(grid_layout$key, c("O1__G1", "O1__G2", "O2__G1", "O2__G2"))
+  expect_false(grid_layout$present[grid_layout$key == "O2__G1"])
+  expect_true(grid_layout$present[grid_layout$key == "O2__G2"])
+
+  g <- plotOverlayPerNestedGroup(
+    sce,
+    outer_col = "outer",
+    group_col = "group",
+    foreground = "Gene1",
+    background = "solid",
+    outer_order = c("O1", "O2"),
+    group_order = c("G1", "G2"),
+    layout = "compact"
+  )
+  expect_s3_class(g, "patchwork")
+  expect_equal(patchwork_plot_count(g), 4L)
+  expect_equal(g$patches$layout$ncol, 2L)
+
+  g_grid <- plotOverlayPerNestedGroup(
+    sce,
+    outer_col = "outer",
+    group_col = "group",
+    foreground = "Gene1",
+    background = "solid",
+    outer_order = c("O1", "O2"),
+    group_order = c("G1", "G2"),
+    layout = "grid"
+  )
+  expect_s3_class(g_grid, "patchwork")
+  expect_equal(patchwork_plot_count(g_grid), 4L)
+  expect_equal(g_grid$patches$layout$ncol, 2L)
+  grid_children <- patchwork_child_plots(g_grid)
+  real_children <- Filter(function(p) length(p$layers) > 0L, grid_children)
+  spacer_children <- Filter(function(p) length(p$layers) == 0L, grid_children)
+  expect_equal(length(real_children), 3L)
+  expect_equal(length(spacer_children), 1L)
+  lapply(real_children, function(p) {
+    expect_equal(nrow(grouped_plot_data(p)), ncol(sce))
+    expect_equal(nrow(grouped_foreground_layer_data(p)), 1L)
+  })
+})
+
+test_that("nested grouped plots keep full background and panel foreground subset", {
+  sce <- make_repeated_nested_sce()
+
+  g <- plotOverlayPerNestedGroup(
+    sce,
+    outer_col = "outer",
+    group_col = "group",
+    foreground = "Gene1",
+    background = "solid",
+    outer_order = c("O1", "O2"),
+    group_order = c("G1", "G2"),
+    layout = "grid"
+  )
+
+  children <- patchwork_child_plots(g)
+  expect_equal(length(children), 4L)
+  lapply(children, function(p) {
+    expect_equal(nrow(grouped_plot_data(p)), ncol(sce))
+    expect_equal(nrow(grouped_foreground_layer_data(p)), 1L)
+  })
+
+  fg_x <- vapply(children, function(p) {
+    grouped_foreground_layer_data(p)$X[[1L]]
+  }, numeric(1))
+  expect_setequal(fg_x, c(1, 2, 3, 4))
+})
+
+test_that("nested grouped plots support simple panel titles", {
+  sce <- make_repeated_nested_sce(missing_o2_g1 = TRUE)
+
+  g_auto <- plotOverlayPerNestedGroup(
+    sce,
+    outer_col = "outer",
+    group_col = "group",
+    foreground = "Gene1",
+    background = "solid",
+    outer_order = c("O1", "O2"),
+    group_order = c("G1", "G2"),
+    layout = "grid"
+  )
+  children <- patchwork_child_plots(g_auto)
+  real_children <- Filter(function(p) length(p$layers) > 0L, children)
+  spacer_children <- Filter(function(p) length(p$layers) == 0L, children)
+  expect_setequal(
+    vapply(real_children, function(p) p$labels$title, character(1)),
+    c("G1 - O1", "G2 - O1", "G2 - O2")
+  )
+  expect_equal(length(spacer_children), 1L)
+  expect_null(spacer_children[[1L]]$labels$title)
+
+  g_inner <- plotOverlayPerNestedGroup(
+    sce,
+    outer_col = "outer",
+    group_col = "group",
+    foreground = "Gene1",
+    background = "solid",
+    outer_order = c("O1", "O2"),
+    group_order = c("G1", "G2"),
+    layout = "compact",
+    panel_titles = "inner"
+  )
+  real_inner <- Filter(function(p) length(p$layers) > 0L, patchwork_child_plots(g_inner))
+  expect_setequal(
+    vapply(real_inner, function(p) p$labels$title, character(1)),
+    c("G1", "G2")
+  )
+
+  g_none <- plotOverlayPerNestedGroup(
+    sce,
+    outer_col = "outer",
+    group_col = "group",
+    foreground = "Gene1",
+    background = "solid",
+    outer_order = c("O1", "O2"),
+    group_order = c("G1", "G2"),
+    layout = "compact",
+    panel_titles = "none"
+  )
+  real_none <- Filter(function(p) length(p$layers) > 0L, patchwork_child_plots(g_none))
+  lapply(real_none, function(p) {
+    expect_null(p$labels$title)
+  })
+})
+
 test_that("plotOverlayPerNestedGroup handles shared limits with empty foreground panels", {
   sce <- get_example_sce()
 
@@ -705,10 +1009,7 @@ test_that("plotOverlayPerNestedGroup handles shared limits with empty foreground
     fg_limits = "shared"
   )
   expect_s3_class(g, "patchwork")
-  expect_equal(
-    patchwork_plot_count(g),
-    expected_nested_panel_count(sce, "sample", "sample_type")
-  )
+  expect_equal(expected_nested_panel_count(sce, "sample", "sample_type"), 6L)
 })
 
 test_that("plotOverlayPerNestedGroup preserves layout for empty foreground subsets", {
@@ -730,14 +1031,8 @@ test_that("plotOverlayPerNestedGroup preserves layout for empty foreground subse
     "drawing an empty foreground layer"
   )
   expect_s3_class(g_empty, "patchwork")
-  expect_equal(
-    patchwork_plot_count(g_empty),
-    expected_nested_panel_count(sce, "sample", "sample_type")
-  )
-  expect_equal(
-    g_empty$patches$layout$ncol,
-    expected_nested_ncol(sce, "sample", "sample_type")
-  )
+  expect_equal(expected_nested_panel_count(sce, "sample", "sample_type"), 6L)
+  expect_equal(expected_nested_ncol(sce, "sample", "sample_type"), 2L)
 
   g_partial <- plotOverlayPerNestedGroup(
     sce,
@@ -750,14 +1045,8 @@ test_that("plotOverlayPerNestedGroup preserves layout for empty foreground subse
     fg_subset_cells = quote(sample_type == "MPNST")
   )
   expect_s3_class(g_partial, "patchwork")
-  expect_equal(
-    patchwork_plot_count(g_partial),
-    expected_nested_panel_count(sce, "sample", "sample_type")
-  )
-  expect_equal(
-    g_partial$patches$layout$ncol,
-    expected_nested_ncol(sce, "sample", "sample_type")
-  )
+  expect_equal(expected_nested_panel_count(sce, "sample", "sample_type"), 6L)
+  expect_equal(expected_nested_ncol(sce, "sample", "sample_type"), 2L)
 })
 
 test_that("plotOverlayPerNestedGroup validates rasterization arguments early", {

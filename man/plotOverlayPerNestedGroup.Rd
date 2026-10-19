@@ -13,6 +13,8 @@ plotOverlayPerNestedGroup(
   reduced_dim = "TSNE",
   group_order = NULL,
   outer_order = NULL,
+  layout = c("auto", "compact", "grid"),
+  panel_titles = c("auto", "outer_inner", "inner", "none"),
   fg_subset_cells = NULL,
   bg_type = c("auto", "continuous", "categorical"),
   bg_assay = "logcounts",
@@ -78,6 +80,20 @@ factor grouping variables; otherwise, the order of appearance in
 groups. If \code{NULL}, factor levels are used for factor grouping variables;
 otherwise, the order of appearance in \code{outer_col} is used. Defaults to
 \code{NULL}.}
+
+\item{layout}{Character value controlling how nested panels are arranged.
+Use \code{"compact"} to show only observed \code{group_col} values within
+each \code{outer_col} row, \code{"grid"} to reserve a full
+\code{outer_col}-by-\code{group_col} grid with blank spacers for missing
+combinations, or \code{"auto"} to use \code{"grid"} when any
+\code{group_col} value appears in more than one \code{outer_col} value and
+\code{"compact"} otherwise. Defaults to \code{"auto"}.}
+
+\item{panel_titles}{Character value controlling titles added to real nested
+panels. Use \code{"outer_inner"} to label panels as \code{inner - outer},
+\code{"inner"} to label panels by the inner group only, \code{"none"} to
+suppress panel titles, or \code{"auto"} to use \code{"outer_inner"}.
+Defaults to \code{"auto"}.}
 
 \item{fg_subset_cells}{An optional additional cell subset applied to the
 foreground layer before splitting by group. It can be \code{NULL}, a logical
@@ -221,36 +237,45 @@ function returns \code{NULL} with a warning.
 }
 \description{
 \code{plotOverlayPerNestedGroup} creates one \code{\link{plotOverlay}} plot
-for each value of an inner grouping variable and arranges the plots according
-to a second, outer grouping variable. The usual use case is to create
-per-sample overlay plots and arrange them by sample type, condition or
-experimental group.
+for each observed combination of an inner and outer grouping variable. The
+usual use case is to create per-sample overlay plots and arrange them by
+sample type, condition or experimental group.
 }
 \details{
 This function is useful when the cells belong to two related annotations, for
-example samples nested within sample types. Each panel keeps the full
-embedding as background, while the foreground layer is restricted to the cells
-of the corresponding inner group.
+example samples nested within sample types. Each panel uses all cells for the
+background and restricts only the foreground to one observed outer/inner group
+combination, with an optional additional foreground subset applied inside that
+panel.
 
-The inner grouping variable is specified with \code{group_col} and defines
-the individual panels. The outer grouping variable is specified with
-\code{outer_col} and is used to arrange these panels in rows. For example, if
-\code{group_col = "sample"} and \code{outer_col = "sample_type"}, each panel
-will show one sample and panels from the same sample type will be placed in
-the same row.
+The inner grouping variable is specified with \code{group_col} and the outer
+grouping variable is specified with \code{outer_col}. Panels are defined by
+observed \code{outer_col} and \code{group_col} combinations, then arranged
+with one row per outer value. Compact layout shows only observed inner groups
+within each outer row, then right-pads shorter rows with blank spacers so
+panel widths remain consistent. It is useful for true nested structures, such
+as sample type/sample. Grid layout reserves a full outer-by-inner grid and is
+useful for repeated inner labels, such as sample type/treatment. With
+\code{layout = "auto"}, grid layout is used when any inner label appears in
+more than one outer value; otherwise compact layout is used. Missing
+combinations in grid layout are blank spacers, not background-only panels.
+Existing combinations with no foreground-selected cells are still drawn using
+the existing no-foreground behavior.
 
-For each inner group, \code{plotOverlayPerNestedGroup} calls
+For each observed outer/inner combination, \code{plotOverlayPerNestedGroup} calls
 \code{\link{plotOverlay}} using the same background, foreground, palette and
-plotting options. The foreground subset for each panel is defined by the
-inner group membership and, optionally, by the additional filter supplied with
-\code{fg_subset_cells}.
+plotting options. The full \code{sce} is used in every panel so the
+background layer always shows the full dataset. The foreground subset for
+each panel is defined by the inner and outer group membership and, optionally,
+by the additional filter supplied with \code{fg_subset_cells}.
+Panel titles are added only to real data panels; blank spacer panels do not
+receive titles.
 
-As in \code{\link{plotOverlay}}, subsetting only affects the foreground
-layer. Unless \code{background = "none"}, the background layer still shows all
-cells in every panel, providing a common reference embedding across all
-groups. This makes it possible to compare where samples or other inner groups
-are located in the same reduced dimension space, while keeping the broader
-outer grouping visible in the layout.
+Missing outer/inner combinations are skipped in compact layout and represented
+by blank spacers in grid layout. They are not drawn as background-only panels.
+When a combination exists but \code{fg_subset_cells} selects no foreground
+cells, the panel is still drawn and \code{\link{plotOverlay}} handles the
+empty foreground layer in the usual way.
 
 With \code{fg_limits = "shared"}, foreground ranges are computed after the
 global \code{fg_subset_cells} filter and before splitting into panels. In
@@ -266,9 +291,11 @@ If \code{shared_legend = TRUE}, compatible legends are collected with
 \pkg{patchwork}. The legend can be repositioned afterwards with patchwork
 syntax, for example \code{p & ggplot2::theme(legend.position = "bottom")}.
 
-The function assumes that the inner groups are meaningfully associated with
-the outer groups. In the typical case, each value of \code{group_col} belongs
-to a single value of \code{outer_col}.
+The function supports both uniquely nested inner groups and repeated inner
+labels. For uniquely nested inner groups, such as samples within sample
+types, \code{layout = "auto"} resolves to \code{"compact"}. For repeated
+inner labels, such as treatments or QC groups present across multiple outer
+groups, \code{layout = "auto"} resolves to \code{"grid"}.
 
 If \code{group_order} or \code{outer_order} are provided, panels and rows are
 drawn following those orders. If they are \code{NULL}, factor levels are used
@@ -311,9 +338,28 @@ p3 <- plotOverlayPerNestedGroup(
     group_order = c("S1", "S2", "S3", "S4", "S5", "S6"),
     outer_order = c("PNF", "ANNUBP", "MPNST"),
     reduced_dim = "TSNE",
-    background = "solid"
+    background = "solid",
+    layout = "auto"
 )
 p3
+
+sce_overlay_example$cluster_group <- ifelse(
+    sce_overlay_example$cluster \%in\% c("C1", "C2"),
+    "Cluster C1/C2",
+    "Other clusters"
+)
+p_grid <- plotOverlayPerNestedGroup(
+    sce = sce_overlay_example,
+    foreground = "Gene1",
+    group_col = "cluster_group",
+    outer_col = "sample_type",
+    reduced_dim = "TSNE",
+    background = "cluster",
+    fg_limits = "shared",
+    shared_legend = TRUE,
+    layout = "auto"
+)
+p_grid
 
 # Reuse one foreground scale and collect compatible legends.
 p4 <- plotOverlayPerNestedGroup(

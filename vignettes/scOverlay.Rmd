@@ -442,7 +442,9 @@ For categorical variables, grouped and nested plots use global categorical value
 
 In this example, `group_col = "sample"` defines the individual panels and `outer_col = "sample_type"` arranges the samples according to their sample type.
 
-As in `plotOverlayPerGroup()`, each panel keeps the complete embedding as background. The foreground layer is restricted to the cells from the corresponding sample. This makes it possible to compare where individual samples are located in the same reduced dimension space.
+Nested layouts can represent either true hierarchies or repeated inner labels. Every real panel shows the full dataset in the background; the nested grouping restricts only the foreground cells. Nested panels are titled by default as `inner - outer`, which can be changed with `panel_titles`; use `panel_titles = "none"` to suppress these titles. When inner labels are unique to one outer group, a compact layout is often easier to read, and shorter rows are padded on the right with blank spacers so panel widths remain consistent. When inner labels repeat across outer groups, a grid layout preserves a consistent column meaning and uses blank spacers for missing outer/inner combinations. The default `layout = "auto"` uses the grid layout when any inner label appears in more than one outer group and otherwise uses the compact layout.
+
+In the sample type/sample example, samples belong to a single sample type, so `layout = "auto"` resolves to the compact layout.
 
 The row and panel order can be controlled with `outer_order` and `group_order`. Here we explicitly order the sample types.
 
@@ -459,9 +461,34 @@ p1 <- plotOverlayPerNestedGroup(
     fg_order = "ascending",
     fg_limits = "shared",
     shared_legend = TRUE,
-    bg_legend = FALSE
+    bg_legend = FALSE,
+    layout = "auto"
 )
 p1
+```
+
+We can also use nested plots when the inner labels repeat across outer groups. Here we create a simple high/low detected-gene group from an existing QC metric. Because both labels can appear in several sample types, `layout = "auto"` chooses the grid layout.
+
+```{r nested-groups-grid, fig.width=8, fig.height=7, fig.wide=TRUE}
+sce_mpnst_example$detected_group <- ifelse(
+    sce_mpnst_example$n_detected > median(sce_mpnst_example$n_detected),
+    "High detected genes",
+    "Low detected genes"
+)
+
+p_grid <- plotOverlayPerNestedGroup(
+    sce = sce_mpnst_example,
+    outer_col = "sample_type",
+    group_col = "detected_group",
+    foreground = "SOX10",
+    background = "celltype.main",
+    layout = "auto",
+    fg_limits = "shared",
+    shared_legend = TRUE,
+    bg_legend = FALSE,
+    reduced_dim = "TSNE"
+)
+p_grid
 ```
 
 Nested plots can also be combined with an additional foreground subset. In this example, one plot is created per sample, but only cells annotated as Mesenchymal as their main cell type are shown in the foreground. 
@@ -480,7 +507,8 @@ p1 <- plotOverlayPerNestedGroup(
     fg_limits = "shared",
     shared_legend = TRUE,
     bg_legend = FALSE,
-    fg_subset_cells = quote(celltype.main == "Mesenchymal")
+    fg_subset_cells = quote(celltype.main == "Mesenchymal"),
+    layout = "auto"
 )
 p1
 ```

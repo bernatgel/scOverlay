@@ -11,7 +11,8 @@ arrangeNestedPlots(
   outer_col,
   group_order = NULL,
   outer_order = NULL,
-  spacer = NULL
+  spacer = NULL,
+  layout = c("compact", "grid")
 )
 }
 \arguments{
@@ -33,18 +34,21 @@ inner groups. Defaults to the order observed in \code{group_col}.}
 \item{outer_order}{Optional character vector specifying the order of the
 outer groups. Defaults to the order observed in \code{outer_col}.}
 
-\item{spacer}{Optional plot used to pad rows with fewer panels. Defaults to
-an empty \pkg{ggplot2} plot.}
+\item{spacer}{Ignored. Kept only for internal compatibility.}
+
+\item{layout}{Character value controlling the nested arrangement. Accepted
+values are \code{"compact"} and \code{"grid"}.}
 }
 \value{
-A \pkg{patchwork} object with one row per outer group and one or more
-plots per row, padded on the right with spacers when needed.
+A \pkg{patchwork} object with one row per outer group and a consistent
+number of columns across rows.
 }
 \description{
 Internal helper used by \code{\link{plotOverlayPerNestedGroup}} to arrange a
-named list of plots in rows defined by an outer grouping variable and columns
-defined by an inner grouping variable. Each row contains the plots belonging
-to one outer group, ordered according to \code{group_order} when provided, and
-padded with spacer plots so all rows have the same number of columns.
+named list of plots in rows defined by an outer grouping variable. Each row
+contains inner groups ordered according to \code{group_order} when provided.
+Compact layout skips missing outer/inner combinations and right-pads shorter
+rows with blank spacers so panel widths stay aligned. Grid layout inserts
+blank spacers for missing combinations in a full rectangular grid.
 }
 \keyword{internal}
