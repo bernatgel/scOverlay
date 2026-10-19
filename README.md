@@ -24,8 +24,8 @@ structure of a t-SNE, UMAP or other reduced-dimension representation.
 
 ## Installation
 
-`scOverlay` is a Bioconductor package (in process). Once available from Bioconductor, it
-can be installed with:
+`scOverlay` is currently under review for inclusion in Bioconductor. Once
+available from Bioconductor, it can be installed with:
 
 ```r
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
@@ -61,15 +61,15 @@ plotOverlay(
 )
 
 ```
-<img width="2100" height="1800" alt="p1" src="https://github.com/user-attachments/assets/e75a38f9-d818-4dd5-9338-0a9d0bd2bbf4" />
+<img width="2100" height="1800" alt="SOX10 expression over cell clusters" src="https://github.com/user-attachments/assets/e75a38f9-d818-4dd5-9338-0a9d0bd2bbf4" />
 
 
 `background` and `foreground` can be a gene, a cell annotation
 from the SingleCellExperiment object (`colData(sce)`)
-or a solid color. 
+or a solid colour.
 
-We can filter the cells in the foreground based on any criteria, 
-including again cell annotations in the data.
+We can filter the cells in the foreground using any criterion,
+including cell annotations in `colData(sce)`.
 
 
 ```r
@@ -84,10 +84,10 @@ plotOverlay(
 )
 
 ```
-<img width="2100" height="1800" alt="p2" src="https://github.com/user-attachments/assets/efedb7d2-ecb0-482c-bae1-99b8887f5015" />
+<img width="2100" height="1800" alt="CDH19 expression in Schwann cells" src="https://github.com/user-attachments/assets/efedb7d2-ecb0-482c-bae1-99b8887f5015" />
 
 
-We can automatically create grouped plots based on one or two variables:
+`plotOverlayPerGroup()` groups plots by a metadata variable:
 
 ```r
 plotOverlayPerGroup(
@@ -100,11 +100,12 @@ plotOverlayPerGroup(
     shared_legend = TRUE
 )
 ```
-<img width="4800" height="1200" alt="p3" src="https://github.com/user-attachments/assets/8bceaaf0-a8c5-4b5f-a711-391f2c8c797d" />
+<img width="4800" height="1200" alt="CDH19 overlays grouped by sample type" src="https://github.com/user-attachments/assets/8bceaaf0-a8c5-4b5f-a711-391f2c8c797d" />
 
 
-And we can combine two or more variables, gene expression 
-for example, using bivariate and combination plots: 
+scOverlay supports bivariate colouring for two numeric variables and combination
+colouring for two to five numeric variables. The example below uses combination
+colouring for three genes:
 
 
 ```r
@@ -116,7 +117,7 @@ plotOverlay(
     reduced_dim = "TSNE"
 )
 ```
-<img width="2400" height="1800" alt="p4" src="https://github.com/user-attachments/assets/e13c1664-09fb-48ef-bcc2-ec9997b7cf48" />
+<img width="2400" height="1800" alt="Combination colouring of three genes" src="https://github.com/user-attachments/assets/e13c1664-09fb-48ef-bcc2-ec9997b7cf48" />
 
 
 ## Documentation
@@ -127,7 +128,7 @@ and saving figures.
 
 - Bioconductor landing page: <https://bioconductor.org/packages/scOverlay>
 - Vignette: <https://bioconductor.org/packages/release/bioc/vignettes/scOverlay/inst/doc/scOverlay.html>
-- Development repository: <https://github.com/bernatgel/scOverlay> 
+- Development repository: <https://github.com/bernatgel/scOverlay>
 
 Bioconductor links will become active once the package is available from Bioconductor.
 
