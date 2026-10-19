@@ -124,8 +124,8 @@ plotOverlay(
     fg_point_size = 0.8,
     background = "cluster",
     reduced_dim = "TSNE",
-    fg_subset_cells = quote(sample == "38ANF1"),
-    title = "CDH19 in 38ANF1",
+    fg_subset_cells = quote(sample == "ANF1"),
+    title = "CDH19 in ANF1",
     bg_dimming = 0.9,
     bg_legend = FALSE
 )
