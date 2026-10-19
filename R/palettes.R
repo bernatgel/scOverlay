@@ -642,22 +642,40 @@ plotPalettes <- function(type = c("all", "categorical", "continuous", "bivariate
 	))
 }
 
-# Look up a ColorBrewer palette by exact name. The type argument is currently
-# advisory; we try all Brewer families because users usually know palette names.
+# Look up a ColorBrewer palette by exact name. The type argument is advisory;
+# the registered Brewer category is used so names resolve for either output type.
 .brewer_palette <- function(name, type, n) {
-	if (!(name %in% rownames(RColorBrewer::brewer.pal.info))) {
+	brewer_info <- RColorBrewer::brewer.pal.info
+	if (!(name %in% rownames(brewer_info))) {
 		return(NULL)
 	}
-	for (brewer_type in c("seq", "qual", "div")) {
-		cols <- tryCatch(
-			suppressWarnings(scales::brewer_pal(type = brewer_type, palette = name)(n)),
-			error = function(e) NULL
-		)
-		if (is.character(cols) && length(cols) > 0L && .is_colour_vector(cols)) {
-			return(cols)
+
+	palette_info <- brewer_info[name, , drop = FALSE]
+	brewer_category <- as.character(palette_info$category[[1L]])
+	minimum_colours <- switch(
+		brewer_category,
+		seq = 3L,
+		qual = 3L,
+		div = 3L,
+		NULL
+	)
+	if (is.null(minimum_colours)) {
+		return(NULL)
+	}
+
+	maximum_colours <- as.integer(palette_info$maxcolors[[1L]])
+	base_n <- min(max(n, minimum_colours), maximum_colours)
+	cols <- RColorBrewer::brewer.pal(base_n, name)
+	if (n < minimum_colours) {
+		if (identical(brewer_category, "qual")) {
+			cols <- cols[seq_len(n)]
+		} else if (n == 1L) {
+			cols <- cols[[2L]]
+		} else {
+			cols <- cols[c(1L, 3L)]
 		}
 	}
-	return(NULL)
+	return(cols)
 }
 
 # Validate, resize, and name a resolved colour vector. This is where categorical

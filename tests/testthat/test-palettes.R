@@ -94,6 +94,138 @@ test_that("getPalette resolves external palette names", {
   }
 })
 
+test_that("ColorBrewer palettes handle supported and out-of-range sizes", {
+  brewer_palettes <- c(
+    Blues = "seq",
+    Set1 = "qual",
+    RdBu = "div"
+  )
+
+  for (palette_name in names(brewer_palettes)) {
+    palette_info <- RColorBrewer::brewer.pal.info[palette_name, , drop = FALSE]
+    maximum_colours <- as.integer(palette_info$maxcolors[[1L]])
+    expect_identical(
+      as.character(palette_info$category[[1L]]),
+      unname(brewer_palettes[[palette_name]])
+    )
+
+    for (n in unique(c(1L, 2L, 3L, maximum_colours))) {
+      expected <- RColorBrewer::brewer.pal(max(3L, n), palette_name)
+      if (n < 3L && identical(brewer_palettes[[palette_name]], "qual")) {
+        expected <- expected[seq_len(n)]
+      } else if (n == 1L) {
+        expected <- expected[[2L]]
+      } else if (n == 2L) {
+        expected <- expected[c(1L, 3L)]
+      }
+      expect_silent(
+        cols <- scOverlay:::.brewer_palette(
+          palette_name,
+          type = "continuous",
+          n = n
+        )
+      )
+      expect_equal(cols, expected)
+      expect_length(cols, n)
+      expect_valid_colours(cols)
+    }
+
+    expect_silent(
+      base_cols <- scOverlay:::.brewer_palette(
+        palette_name,
+        type = "categorical",
+        n = maximum_colours + 3L
+      )
+    )
+    expect_equal(
+      base_cols,
+      RColorBrewer::brewer.pal(maximum_colours, palette_name)
+    )
+    expect_length(base_cols, maximum_colours)
+    expect_valid_colours(base_cols)
+  }
+})
+
+test_that("getPalette uses deliberate small ColorBrewer selections", {
+  brewer_palettes <- c(
+    Blues = "seq",
+    Set1 = "qual",
+    RdBu = "div"
+  )
+
+  for (palette_name in names(brewer_palettes)) {
+    base_cols <- RColorBrewer::brewer.pal(3L, palette_name)
+    if (identical(brewer_palettes[[palette_name]], "qual")) {
+      expected_one <- base_cols[[1L]]
+      expected_two <- base_cols[c(1L, 2L)]
+    } else {
+      expected_one <- base_cols[[2L]]
+      expected_two <- base_cols[c(1L, 3L)]
+    }
+
+    for (type in c("continuous", "categorical")) {
+      expect_silent(
+        one_col <- getPalette(palette_name, type = type, n = 1L)
+      )
+      expect_equal(one_col, expected_one)
+      expect_valid_colours(one_col)
+
+      expect_silent(
+        two_cols <- getPalette(palette_name, type = type, n = 2L)
+      )
+      expect_equal(two_cols, expected_two)
+      expect_valid_colours(two_cols)
+    }
+  }
+
+  expect_equal(
+    getPalette("RdBu", type = "continuous", n = 2L),
+    RColorBrewer::brewer.pal(3L, "RdBu")[c(1L, 3L)]
+  )
+})
+
+test_that("getPalette finalizes ColorBrewer palettes for either requested type", {
+  brewer_palettes <- c("Blues", "Set1", "RdBu")
+
+  for (palette_name in brewer_palettes) {
+    maximum_colours <- as.integer(
+      RColorBrewer::brewer.pal.info[palette_name, "maxcolors"]
+    )
+    oversized_n <- maximum_colours + 3L
+
+    expect_silent(
+      continuous_cols <- getPalette(
+        palette_name,
+        type = "continuous",
+        n = oversized_n
+      )
+    )
+    expect_length(continuous_cols, oversized_n)
+    expect_valid_colours(continuous_cols)
+
+    expect_silent(
+      categorical_cols <- getPalette(
+        palette_name,
+        type = "categorical",
+        n = maximum_colours
+      )
+    )
+    expect_length(categorical_cols, maximum_colours)
+    expect_valid_colours(categorical_cols)
+
+    expect_warning(
+      oversized_categorical_cols <- getPalette(
+        palette_name,
+        type = "categorical",
+        n = oversized_n
+      ),
+      "Categorical palette has fewer colours than requested"
+    )
+    expect_length(oversized_categorical_cols, oversized_n)
+    expect_valid_colours(oversized_categorical_cols)
+  }
+})
+
 test_that("getPalette honors named categorical colors when values match names", {
   values <- c("3", "1", "2")
   custom <- c("1" = "#05d165", "2" = "#e6194b", "3" = "#ebad00")
