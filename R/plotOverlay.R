@@ -1,7 +1,7 @@
 #' Plot layered information on a single-cell embedding
 #'
 #' \code{plotOverlay} creates a layered plot of a reduced dimension
-#' representation stored in a \linkS4class{SingleCellExperiment} object. It
+#' representation stored in a \linkS4class[SingleCellExperiment]{SingleCellExperiment} object. It
 #' first creates a background layer, dims this background with a semi-transparent
 #' white overlay, and finally draws a foreground variable on top using an
 #' independent colour scale. When a layer is set to \code{"none"}, the
@@ -38,7 +38,7 @@
 #' point layers are rasterized; axes, labels, legends and other plot elements
 #' remain vector graphics.
 #'
-#' @param sce A \linkS4class{SingleCellExperiment} object containing the reduced
+#' @param sce A \linkS4class[SingleCellExperiment]{SingleCellExperiment} object containing the reduced
 #' dimensions and the data to plot. The object must contain the reduced
 #' dimension specified in \code{reduced_dim}. If \code{background} or
 #' \code{foreground} is a feature, the object must also contain the

@@ -36,7 +36,7 @@ plotOverlayPerGroup(
 )
 }
 \arguments{
-\item{sce}{A \linkS4class{SingleCellExperiment} object containing the reduced
+\item{sce}{A \linkS4class[SingleCellExperiment]{SingleCellExperiment} object containing the reduced
 dimensions and the data to plot. The object must contain the reduced
 dimension specified in \code{reduced_dim}, the grouping column specified in
 \code{group_col}, and the data required by \code{foreground}.}

@@ -40,7 +40,7 @@
 #' it is \code{NULL}, factor levels are used when \code{group_col} is a factor;
 #' otherwise, groups are shown in their order of appearance in the object.
 #'
-#' @param sce A \linkS4class{SingleCellExperiment} object containing the reduced
+#' @param sce A \linkS4class[SingleCellExperiment]{SingleCellExperiment} object containing the reduced
 #' dimensions and the data to plot. The object must contain the reduced
 #' dimension specified in \code{reduced_dim}, the grouping column specified in
 #' \code{group_col}, and the data required by \code{foreground}.

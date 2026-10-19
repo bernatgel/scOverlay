@@ -7,7 +7,7 @@
 #' rows with blank spacers so panel widths stay aligned. Grid layout inserts
 #' blank spacers for missing combinations in a full rectangular grid.
 #'
-#' @param sce A \linkS4class{SingleCellExperiment} object.
+#' @param sce A \linkS4class[SingleCellExperiment]{SingleCellExperiment} object.
 #' @param plots A named list of \pkg{ggplot2} or \pkg{patchwork} plots. Names
 #' should correspond to inner group values, or preferably to nested keys of the
 #' form \code{outer__group}.

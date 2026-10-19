@@ -66,7 +66,7 @@
 #' when the corresponding grouping variable is a factor; otherwise, values are
 #' shown in their order of appearance in the object.
 #'
-#' @param sce A \linkS4class{SingleCellExperiment} object containing the reduced
+#' @param sce A \linkS4class[SingleCellExperiment]{SingleCellExperiment} object containing the reduced
 #' dimensions and the data to plot. The object must contain the reduced
 #' dimension specified in \code{reduced_dim}, the grouping columns specified in
 #' \code{group_col} and \code{outer_col}, and the data required by

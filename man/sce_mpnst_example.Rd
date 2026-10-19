@@ -5,7 +5,7 @@
 \alias{sce_mpnst_example}
 \title{Example MPNST SingleCellExperiment for the scOverlay vignette}
 \format{
-A \linkS4class{SingleCellExperiment} object with selected genes, cell
+A \linkS4class[SingleCellExperiment]{SingleCellExperiment} object with selected genes, cell
 metadata and reduced dimensions.
 }
 \source{
@@ -13,7 +13,7 @@ European Genome-phenome Archive study EGAS50000001747,
 \url{https://ega-archive.org/studies/EGAS50000001747}.
 }
 \description{
-A small \linkS4class{SingleCellExperiment} object derived from the single-cell
+A small \linkS4class[SingleCellExperiment]{SingleCellExperiment} object derived from the single-cell
 MPNST progression dataset deposited at the European Genome-phenome Archive
 under accession EGAS50000001747. The object has been reduced in size and is
 included only to demonstrate scOverlay functionality in the package vignette.

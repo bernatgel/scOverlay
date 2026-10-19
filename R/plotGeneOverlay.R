@@ -11,7 +11,7 @@
 #' Genes not present in \code{rownames(sce)} are skipped with a warning. If none
 #' of the requested genes are found, the function stops with an error.
 #'
-#' @param sce A \linkS4class{SingleCellExperiment} object containing the reduced
+#' @param sce A \linkS4class[SingleCellExperiment]{SingleCellExperiment} object containing the reduced
 #' dimensions and gene expression values to plot.
 #'
 #' @param genes Character vector with the genes to plot. Genes are looked up in

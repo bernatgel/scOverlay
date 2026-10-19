@@ -7,7 +7,7 @@
 plotGeneOverlay(sce, genes, ...)
 }
 \arguments{
-\item{sce}{A \linkS4class{SingleCellExperiment} object containing the reduced
+\item{sce}{A \linkS4class[SingleCellExperiment]{SingleCellExperiment} object containing the reduced
 dimensions and gene expression values to plot.}
 
 \item{genes}{Character vector with the genes to plot. Genes are looked up in

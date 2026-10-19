@@ -16,7 +16,7 @@ arrangeNestedPlots(
 )
 }
 \arguments{
-\item{sce}{A \linkS4class{SingleCellExperiment} object.}
+\item{sce}{A \linkS4class[SingleCellExperiment]{SingleCellExperiment} object.}
 
 \item{plots}{A named list of \pkg{ggplot2} or \pkg{patchwork} plots. Names
 should correspond to inner group values, or preferably to nested keys of the

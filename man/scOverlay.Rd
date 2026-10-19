@@ -5,7 +5,7 @@
 \title{scOverlay: layered overlays for single-cell embeddings}
 \description{
 scOverlay creates layered overlay plots for reduced-dimension embeddings
-stored in \linkS4class{SingleCellExperiment} objects. It combines background
+stored in \linkS4class[SingleCellExperiment]{SingleCellExperiment} objects. It combines background
 and foreground layers to show gene expression, assay-derived features and
 \code{colData} metadata with independent colour scales.
 }

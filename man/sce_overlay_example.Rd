@@ -5,11 +5,11 @@
 \alias{sce_overlay_example}
 \title{Small example SingleCellExperiment for scOverlay}
 \format{
-A \linkS4class{SingleCellExperiment} object with gene expression
+A \linkS4class[SingleCellExperiment]{SingleCellExperiment} object with gene expression
 values, cell metadata and reduced dimensions.
 }
 \description{
-A small \linkS4class{SingleCellExperiment} object used in scOverlay examples
+A small \linkS4class[SingleCellExperiment]{SingleCellExperiment} object used in scOverlay examples
 and tests. It contains a small synthetic set of cells, genes, cell
 annotations and reduced dimensions to demonstrate the plotting functions
 quickly.
