@@ -50,43 +50,74 @@ remotes::install_github("bernatgel/scOverlay")
 ```r
 library(scOverlay)
 
-data("sce_overlay_example")
+data("sce_mpnst_example")
 
 plotOverlay(
-    sce = sce_overlay_example,
+    sce = sce_mpnst_example,
     foreground = "SOX10",
     background = "cluster",
-    reduced_dim = "TSNE"
+    reduced_dim = "TSNE",
+    bg_legend = FALSE
 )
+
 ```
+<img width="2100" height="1800" alt="p1" src="https://github.com/user-attachments/assets/e75a38f9-d818-4dd5-9338-0a9d0bd2bbf4" />
+
 
 `background` and `foreground` can be a gene, a cell annotation
-from `colData(sce)`, `"solid"` or `"none"`.
+from the SingleCellExperiment object (`colData(sce)`)
+or a solid color. 
+
+We can filter the cells in the foreground based on any criteria, 
+including again cell annotations in the data.
+
 
 ```r
 plotOverlay(
-    sce = sce_overlay_example,
-    foreground = "S100B",
+    sce = sce_mpnst_example,
+    foreground = "CDH19",
     background = "cluster",
-    fg_subset_cells = quote(cluster == "C1"),
-    fg_palette = "magma",
-    reduced_dim = "TSNE"
+    fg_subset_cells = quote(celltype.main == "Schwann cell"),
+    fg_palette = "viridis",
+    reduced_dim = "TSNE",
+    bg_legend = FALSE
 )
-```
 
-Grouped plots can be created with `plotOverlayPerGroup()`:
+```
+<img width="2100" height="1800" alt="p2" src="https://github.com/user-attachments/assets/efedb7d2-ecb0-482c-bae1-99b8887f5015" />
+
+
+We can automatically create grouped plots based on one or two variables:
 
 ```r
 plotOverlayPerGroup(
-    sce = sce_overlay_example,
+    sce = sce_mpnst_example,
     group_col = "sample_type",
-    foreground = "SOX10",
-    background = "cluster",
+    foreground = "CDH19",
+    background = "celltype.main",
     reduced_dim = "TSNE",
     fg_limits = "shared",
     shared_legend = TRUE
 )
 ```
+<img width="4800" height="1200" alt="p3" src="https://github.com/user-attachments/assets/8bceaaf0-a8c5-4b5f-a711-391f2c8c797d" />
+
+
+And we can combine two or more variables, gene expression 
+for example, using bivariate and combination plots: 
+
+
+```r
+plotOverlay(
+    sce = sce_mpnst_example,
+    foreground = c("PRRX1", "EGFR", "CDH19"),
+    fg_type = "combination",
+    background = "celltype.main",
+    reduced_dim = "TSNE"
+)
+```
+<img width="2400" height="1800" alt="p4" src="https://github.com/user-attachments/assets/e13c1664-09fb-48ef-bcc2-ec9997b7cf48" />
+
 
 ## Documentation
 
