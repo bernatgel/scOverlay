@@ -11,3 +11,4 @@
 ^.*\.Rcheck$
 ^Rplots\.pdf$
 ^scratch\.R$
+^data-raw$
