@@ -2,9 +2,9 @@ Package: scOverlay
 Type: Package
 BiocType: Software
 Title: Multilayer Plots for Single-Cell Data
-Version: 0.99.4
+Version: 0.99.5
 Authors@R: 
-    c(person(given = "Bernat", family = "Gel", role = c("aut", "cre", "fnd"),
+    c(person(given = "Bernat", family = "Gel", role = c("aut", "cre"),
              email = "bgel@igtp.cat",
              comment = c(ORCID = "0000-0001-8878-349X")))
 Description: scOverlay provides publication-grade plotting helpers to display a
