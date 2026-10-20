@@ -797,11 +797,9 @@ plotBivariateLegend <- function(features,
 
 # Helper to choose mode-specific foreground palette defaults.
 .resolve_fg_palette <- function(fg_palette, fg_type) {
-	if (is.null(fg_palette) && identical(fg_type, "bivariate")) {
-		return("bivariateBright")
-	}
-	if (is.null(fg_palette) && identical(fg_type, "combination")) {
-		return("combinationBright")
+	if (is.null(fg_palette) && length(fg_type) == 1L &&
+			fg_type %in% c("bivariate", "combination")) {
+		return(.default_palette_name(fg_type))
 	}
 	return(fg_palette)
 }
@@ -1017,11 +1015,11 @@ plotBivariateLegend <- function(features,
 
 # Helper to construct bivariate foreground colours from two numeric variables.
 .prepare_bivariate_values <- function(sce,
-																			features,
-																			assay,
-																			limits = NULL,
-																			n_bins = 9L,
-																			palette = "bivariateBright") {
+															features,
+															assay,
+															limits = NULL,
+															n_bins = 9L,
+															palette = .default_palette_name("bivariate")) {
 	if (!is.character(features) || length(features) != 2L || anyNA(features)) {
 		stop("`fg_type = 'bivariate'` requires `foreground` to be a character vector of length 2.", call. = FALSE)
 	}
@@ -1062,53 +1060,8 @@ plotBivariateLegend <- function(features,
 	))
 }
 
-.bivariate_palette_registry <- function() {
-	return(list(
-		bivariateBright = c(
-			low_xy = "#e6e6e6",
-			high_x = "#ff4346",
-			high_y = "#55b2ff",
-			high_xy = "#7a1fa2"
-		),
-		bivariateOrangeBlue = c(
-			low_xy = "#e8e8e8",
-			high_x = "#f46d43",
-			high_y = "#4393c3",
-			high_xy = "#542788"
-		),
-		bivariatePinkGreen = c(
-			low_xy = "#e8e8e8",
-			high_x = "#e7298a",
-			high_y = "#66a61e",
-			high_xy = "#762a83"
-		),
-		bivariateRedCyan = c(
-			low_xy = "#e6e6e6",
-			high_x = "#e41a1c",
-			high_y = "#00bfc4",
-			high_xy = "#6a3d9a"
-		),
-		bivariateGreenRed = c(
-			low_xy = "#e6e6e6",
-			high_x = "#2ca25f",
-			high_y = "#de2d26",
-			high_xy = "#ffd92f"
-		),
-		bivariateBlueYellow = c(
-			low_xy = "#e6e6e6",
-			high_x = "#3182bd",
-			high_y = "#fdd835",
-			high_xy = "#31a354"
-		)
-	))
-}
-
-.bivariate_palette_names <- function() {
-	return(names(.bivariate_palette_registry()))
-}
-
-.bivariate_palette_corners <- function(palette = "bivariateBright") {
-	builtins <- .bivariate_palette_registry()
+.bivariate_palette_corners <- function(palette = .default_palette_name("bivariate")) {
+	builtins <- scOverlay_palettes$bivariate
 	corner_names <- c("low_xy", "high_x", "high_y", "high_xy")
 	if (is.character(palette) && length(palette) == 1L && !is.na(palette)) {
 		if (palette %in% names(builtins)) {
@@ -1143,7 +1096,7 @@ plotBivariateLegend <- function(features,
 }
 
 # Helper to create an n x n bivariate palette matrix by RGB bilinear blending.
-.bivariate_palette <- function(palette = "bivariateBright", n = 9L) {
+.bivariate_palette <- function(palette = .default_palette_name("bivariate"), n = 9L) {
 	if (!is.numeric(n) || length(n) != 1L || is.na(n) || n < 2L) {
 		stop("`n` must be a single numeric value greater than or equal to 2.", call. = FALSE)
 	}

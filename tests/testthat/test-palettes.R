@@ -23,6 +23,112 @@ test_that("getPalette resolves scOverlay defaults", {
   expect_valid_colours(pal_categorical)
 })
 
+test_that("mode-specific palette defaults remain unchanged", {
+  expect_identical(scOverlay:::.default_palette_name("categorical"), "scOverlay")
+  expect_identical(scOverlay:::.default_palette_name("continuous"), "gray_red")
+  expect_identical(scOverlay:::.default_palette_name("bivariate"), "bivariateBright")
+  expect_identical(scOverlay:::.default_palette_name("combination"), "combinationBright")
+
+  expect_identical(
+    scOverlay:::.resolve_fg_palette(NULL, "bivariate"),
+    "bivariateBright"
+  )
+  expect_identical(
+    scOverlay:::.resolve_fg_palette(NULL, "combination"),
+    "combinationBright"
+  )
+  expect_null(scOverlay:::.resolve_fg_palette(NULL, "continuous"))
+})
+
+test_that("bivariate palette corners and orientation remain unchanged", {
+  expected <- list(
+    bivariateBright = c(
+      low_xy = "#e6e6e6",
+      high_x = "#ff4346",
+      high_y = "#55b2ff",
+      high_xy = "#7a1fa2"
+    ),
+    bivariateOrangeBlue = c(
+      low_xy = "#e8e8e8",
+      high_x = "#f46d43",
+      high_y = "#4393c3",
+      high_xy = "#542788"
+    ),
+    bivariatePinkGreen = c(
+      low_xy = "#e8e8e8",
+      high_x = "#e7298a",
+      high_y = "#66a61e",
+      high_xy = "#762a83"
+    ),
+    bivariateRedCyan = c(
+      low_xy = "#e6e6e6",
+      high_x = "#e41a1c",
+      high_y = "#00bfc4",
+      high_xy = "#6a3d9a"
+    ),
+    bivariateGreenRed = c(
+      low_xy = "#e6e6e6",
+      high_x = "#2ca25f",
+      high_y = "#de2d26",
+      high_xy = "#ffd92f"
+    ),
+    bivariateBlueYellow = c(
+      low_xy = "#e6e6e6",
+      high_x = "#3182bd",
+      high_y = "#fdd835",
+      high_xy = "#31a354"
+    )
+  )
+
+  expect_identical(scOverlay:::scOverlay_palettes$bivariate, expected)
+  expect_identical(
+    scOverlay:::.bivariate_palette_corners(),
+    expected$bivariateBright
+  )
+
+  for (palette_name in names(expected)) {
+    corners <- expected[[palette_name]]
+    expect_identical(
+      scOverlay:::.bivariate_palette_corners(palette_name),
+      corners
+    )
+
+    palette_matrix <- scOverlay:::.bivariate_palette(palette_name, n = 5L)
+    matrix_corners <- c(
+      low_xy = palette_matrix[1L, 1L],
+      high_x = palette_matrix[1L, 5L],
+      high_y = palette_matrix[5L, 1L],
+      high_xy = palette_matrix[5L, 5L]
+    )
+    expect_equal(
+      unname(grDevices::col2rgb(matrix_corners)),
+      unname(grDevices::col2rgb(corners))
+    )
+  }
+})
+
+test_that("combinationBright ordering remains unchanged", {
+  expected <- c(
+    "#D9D9D9", "#ff4346", "#55b2ff", "#68d865",
+    "#984EA3", "#FF7F00", "#FFFF33", "#A65628",
+    "#F781BF", "#00CED1", "#B3DE69", "#FDB462",
+    "#80B1D3", "#FB8072", "#BC80BD", "#8DD3C7",
+    "#CCEBC5", "#FFED6F", "#1B9E77", "#D95F02",
+    "#7570B3", "#E7298A", "#66A61E", "#E6AB02",
+    "#A6761D", "#666666", "#1F78B4", "#33A02C",
+    "#FB9A99", "#CAB2D6", "#FDBF6F", "#B2DF8A"
+  )
+
+  expect_identical(
+    scOverlay:::scOverlay_palettes$categorical$combinationBright,
+    expected
+  )
+  expect_identical(
+    getPalette("combinationBright", type = "categorical", n = 32L),
+    expected
+  )
+})
+
 test_that("getPalette resolves named scOverlay palettes by type", {
   pal_gray_red <- getPalette("gray_red", type = "continuous", n = 256)
   expect_type(pal_gray_red, "character")

@@ -203,6 +203,44 @@ scOverlay_palettes <- list(
 		diverging_blue_white_red = c("#053061", "#2166AC", "#67A9CF", "#F7F7F7", "#EF8A62", "#B2182B", "#67001F"),
 		diverging_green_white_purple = c("#00441B", "#238B45", "#A1D99B", "#F7F7F7", "#BCBDDC", "#756BB1", "#3F007D"),
 		diverging_teal_gray_magenta = c("#004D40", "#00897B", "#80CBC4", "#F0F0F0", "#F4A3C1", "#D81B60", "#880E4F")
+	),
+	bivariate = list(
+		bivariateBright = c(
+			low_xy = "#e6e6e6",
+			high_x = "#ff4346",
+			high_y = "#55b2ff",
+			high_xy = "#7a1fa2"
+		),
+		bivariateOrangeBlue = c(
+			low_xy = "#e8e8e8",
+			high_x = "#f46d43",
+			high_y = "#4393c3",
+			high_xy = "#542788"
+		),
+		bivariatePinkGreen = c(
+			low_xy = "#e8e8e8",
+			high_x = "#e7298a",
+			high_y = "#66a61e",
+			high_xy = "#762a83"
+		),
+		bivariateRedCyan = c(
+			low_xy = "#e6e6e6",
+			high_x = "#e41a1c",
+			high_y = "#00bfc4",
+			high_xy = "#6a3d9a"
+		),
+		bivariateGreenRed = c(
+			low_xy = "#e6e6e6",
+			high_x = "#2ca25f",
+			high_y = "#de2d26",
+			high_xy = "#ffd92f"
+		),
+		bivariateBlueYellow = c(
+			low_xy = "#e6e6e6",
+			high_x = "#3182bd",
+			high_y = "#fdd835",
+			high_xy = "#31a354"
+		)
 	)
 )
 
@@ -444,21 +482,15 @@ plotPalettes <- function(type = c("all", "categorical", "continuous", "bivariate
 .palette_metadata <- function(type) {
 	types <- if (identical(type, "all")) c("categorical", "continuous", "bivariate") else type
 	info <- do.call(rbind, lapply(types, function(palette_type) {
-		if (identical(palette_type, "bivariate")) {
-			palette_names <- .bivariate_palette_names()
-			n_colours <- rep(4L, length(palette_names))
-			colours <- lapply(palette_names, .bivariate_palette_corners)
-		} else {
-			palettes <- scOverlay_palettes[[palette_type]]
-			palette_names <- names(palettes)
-			n_colours <- vapply(palettes, length, integer(1))
-			colours <- unname(palettes)
-			if (identical(palette_type, "continuous")) {
-				viridis_names <- setdiff(.viridis_palette_names(), palette_names)
-				palette_names <- c(palette_names, viridis_names)
-				n_colours <- c(n_colours, rep(NA_integer_, length(viridis_names)))
-				colours <- c(colours, as.list(rep(NA_character_, length(viridis_names))))
-			}
+		palettes <- scOverlay_palettes[[palette_type]]
+		palette_names <- names(palettes)
+		n_colours <- vapply(palettes, length, integer(1))
+		colours <- unname(palettes)
+		if (identical(palette_type, "continuous")) {
+			viridis_names <- setdiff(.viridis_palette_names(), palette_names)
+			palette_names <- c(palette_names, viridis_names)
+			n_colours <- c(n_colours, rep(NA_integer_, length(viridis_names)))
+			colours <- c(colours, as.list(rep(NA_character_, length(viridis_names))))
 		}
 		info <- data.frame(
 			name = palette_names,
@@ -578,7 +610,7 @@ plotPalettes <- function(type = c("all", "categorical", "continuous", "bivariate
 
 # Resolve the internal palette name used when users request package defaults.
 .default_palette_name <- function(type) {
-	type <- match.arg(type, c("categorical", "continuous", "bivariate"))
+	type <- match.arg(type, c("categorical", "continuous", "bivariate", "combination"))
 	if (identical(type, "categorical")) {
 		return("scOverlay")
 	}
@@ -587,6 +619,9 @@ plotPalettes <- function(type = c("all", "categorical", "continuous", "bivariate
 	}
 	if (identical(type, "bivariate")) {
 		return("bivariateBright")
+	}
+	if (identical(type, "combination")) {
+		return("combinationBright")
 	}
 	stop("Invalid palette type.", call. = FALSE)
 }
