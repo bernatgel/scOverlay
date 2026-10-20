@@ -2,7 +2,7 @@ Package: scOverlay
 Type: Package
 BiocType: Software
 Title: Multilayer Plots for Single-Cell Data
-Version: 0.99.3
+Version: 0.99.4
 Authors@R: 
     c(person(given = "Bernat", family = "Gel", role = c("aut", "cre", "fnd"),
              email = "bgel@igtp.cat",
