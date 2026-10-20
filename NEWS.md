@@ -1,4 +1,4 @@
-# scOverlay 0.99.3
+# scOverlay 0.99.5
 
 ## Initial Bioconductor submission
 
